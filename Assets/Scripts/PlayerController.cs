@@ -6,7 +6,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 {
     [Header("Movement Settings")]
     public float walkSpeed = 3f;
-    public float sprintSpeed = 6f;
+    public float runSpeed = 6f;
+    public float sprintSpeed = 9f;
     public float jumpHeight = 2f;
     public float rollSpeed = 7f;
     public float gravity = -9.81f;
@@ -18,6 +19,7 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private CharacterController characterController;
     private Animator animator;
     private Vector3 velocity;
+    private bool isRunning = false;
     private bool isSprinting = false;
     private bool isCrouching = false;
     private bool isRolling = false;
@@ -25,6 +27,10 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private Vector2 lookInput;
     private EclipseProtocol controls;
     private Vector3 cameraOffset;
+    private bool isLanding = false;
+    private bool jumpInput = false;
+    private int currentJumpCount = 0;
+    private int maxJumpCount = 2;
 
     private void Awake()
     {
@@ -43,6 +49,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         controls.Player.Fire.performed += ctx => OnFire(ctx);
         controls.Player.Run.performed += ctx => OnRun(ctx);
         controls.Player.Run.canceled += ctx => OnRun(ctx);
+        controls.Player.Sprint.performed += ctx => OnSprint(ctx);
+        controls.Player.Sprint.canceled += ctx => OnSprint(ctx);
 
         cameraOffset = cameraTransform.position - transform.position;
     }
@@ -76,25 +84,33 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && characterController.isGrounded)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            animator.SetTrigger("isJumping");
-        }
+    if (context.performed)
+    {
+        jumpInput = true; // Saut demandé
+    }
+    else if (context.canceled)
+    {
+        jumpInput = false; // Saut annulé
+    }
     }
 
     public void OnSprint(InputAction.CallbackContext context)
     {
         isSprinting = context.performed;
-        animator.SetBool("isSprinting", isSprinting);
+    }
+
+    public void OnRun(InputAction.CallbackContext context)
+    {
+        isRunning = context.performed;
     }
 
     public void OnCrouch(InputAction.CallbackContext context)
     {
-        isCrouching = !isCrouching;
-        animator.SetBool("isCrouching", isCrouching);
-        characterController.height = isCrouching ? 1f : 2f;
-        Debug.Log(isCrouching ? "Crouching" : "Standing");
+        if (context.performed)
+        {
+            isCrouching = !isCrouching;
+            animator.SetBool("isCrouching", isCrouching);
+        }
     }
 
     public void OnRoll(InputAction.CallbackContext context)
@@ -120,26 +136,13 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         }
     }
 
-    public void OnRun(InputAction.CallbackContext context)
-    {
-        if (context.performed)
-        {
-            isSprinting = true;
-            animator.SetBool("isRunning", true);
-        }
-        else if (context.canceled)
-        {
-            isSprinting = false;
-            animator.SetBool("isRunning", false);
-        }
-    }
-
     private void Update()
     {
         HandleMovement();
-        HandleGravity();
+        HandleGravityAndJump();
         HandleAnimations();
         HandleCamera();
+        UpdateAnimations();
     }
 
     private void HandleMovement()
@@ -150,30 +153,81 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
             move = cameraTransform.forward * move.z + cameraTransform.right * move.x;
             move.y = 0f;
 
-            if (movementInput.y < 0)
-            {
-                move = -cameraTransform.forward * Mathf.Abs(movementInput.y);
-            }
-            else
+            if (characterController.isGrounded)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(move);
                 transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
             }
 
-            float currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
+            float currentSpeed = walkSpeed;
+
+            if (isSprinting)
+            {
+                currentSpeed = sprintSpeed;
+            }
+            else if (isRunning)
+            {
+                currentSpeed = runSpeed;
+            }
+
             characterController.Move(move.normalized * currentSpeed * Time.deltaTime);
         }
     }
 
-    private void HandleGravity()
+    private void HandleGravityAndJump()
     {
-        if (characterController.isGrounded && velocity.y < 0)
+        if (characterController.isGrounded)
         {
-            velocity.y = -2f;
+            if (velocity.y < 0)
+            {
+                velocity.y = -2f;
+                currentJumpCount = 0;
+            
+                if (animator.GetBool("isFalling"))
+                {
+                    animator.SetBool("isFalling", false);
+                    animator.SetTrigger("isLanding");
+                }
+            }
+
+            if (jumpInput)
+            {
+                PerformJump();
+            }
+        }
+        else
+        {
+            if (jumpInput && currentJumpCount < maxJumpCount)
+            {
+                PerformJump();
+            }
+
+            velocity.y += gravity * Time.deltaTime;
+
+            if (velocity.y < 0 && !animator.GetBool("isFalling"))
+            {
+                animator.SetBool("isFalling", true);
+            }
         }
 
-        velocity.y += gravity * Time.deltaTime;
+        
         characterController.Move(velocity * Time.deltaTime);
+    }
+
+    void UpdateAnimations()
+    {
+        animator.SetFloat("Speed", movementInput.magnitude);
+    }
+
+    void PerformJump()
+    {
+    if (currentJumpCount < maxJumpCount)
+    {
+        velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        animator.SetTrigger("Jump");
+        currentJumpCount++; // Incrémente le compteur de sauts
+        jumpInput = false; // Réinitialise l'entrée de saut
+    }
     }
 
     private void HandleAnimations()
@@ -182,16 +236,19 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         {
             float smoothTime = 0.1f;
 
-            float currentPosX = animator.GetFloat("PosX");
-            float currentPosY = animator.GetFloat("PosY");
+            animator.SetFloat("PosX", Mathf.Lerp(animator.GetFloat("PosX"), movementInput.x, smoothTime));
+            animator.SetFloat("PosY", Mathf.Lerp(animator.GetFloat("PosY"), movementInput.y, smoothTime));
 
-            animator.SetFloat("PosX", Mathf.Lerp(currentPosX, movementInput.x, smoothTime));
-            animator.SetFloat("PosY", Mathf.Lerp(currentPosY, movementInput.y, smoothTime));
-
-            animator.SetBool("isCrouching", isCrouching);
+            animator.SetBool("isRunning", isRunning && !isSprinting);
             animator.SetBool("isSprinting", isSprinting);
-            animator.SetBool("isJumping", !characterController.isGrounded);
-            animator.SetBool("isRunning", movementInput.magnitude > 0.1f && !isSprinting);
+            animator.SetBool("isWalking", movementInput.magnitude > 0.1f && !isRunning && !isSprinting);
+            animator.SetBool("isJumping", velocity.y > 0 && !characterController.isGrounded);
+            animator.SetBool("isFalling", velocity.y < 0 && !characterController.isGrounded);
+
+            if (animator.GetCurrentAnimatorStateInfo(0).IsName("Land"))
+            {
+                animator.ResetTrigger("isLanding");
+            }
         }
     }
 
