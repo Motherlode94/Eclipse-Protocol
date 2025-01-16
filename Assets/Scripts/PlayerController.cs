@@ -352,7 +352,6 @@ private void HandleStamina()
 
             animator.SetBool("isRunning", isRunning && !isSprinting);
             animator.SetBool("isSprinting", isSprinting);
-            animator.SetBool("isWalking", movementInput.magnitude > 0.1f && !isRunning && !isSprinting);
             animator.SetBool("isJumping", velocity.y > 0 && !characterController.isGrounded);
             animator.SetBool("isFalling", velocity.y < 0 && !characterController.isGrounded);
 

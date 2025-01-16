@@ -29,6 +29,10 @@ public class DroneAI : MonoBehaviour
     private float detectTimer = 0f;
     public Transform Player => player;
 
+    [Header("Attack Settings")]
+    public float attackCooldown = 2f;
+    private float lastAttackTime = 0f;
+
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -38,6 +42,10 @@ public class DroneAI : MonoBehaviour
 
     private void Update()
     {
+<<<<<<< Updated upstream
+=======
+        DetectPlayer();
+>>>>>>> Stashed changes
         if (isChasing && player != null)
         {
             ChasePlayer();
@@ -69,9 +77,10 @@ public class DroneAI : MonoBehaviour
 
     private void DetectPlayer()
     {
-        Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
+                Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
         if (hits.Length > 0)
         {
+<<<<<<< Updated upstream
             Transform potentialPlayer = hits[0].transform;
 
             // Vérifie la ligne de vue
@@ -91,12 +100,36 @@ public class DroneAI : MonoBehaviour
             isChasing = false;
             isAlerted = true;
             alertTimer = alertDuration;
+=======
+            Transform closestPlayer = null;
+            float closestDistance = Mathf.Infinity;
+
+            foreach (var hit in hits)
+            {
+                float distance = Vector3.Distance(transform.position, hit.transform.position);
+                if (distance < closestDistance)
+                {
+                    closestPlayer = hit.transform;
+                    closestDistance = distance;
+                }
+            }
+
+            if (closestPlayer != null && HasLineOfSight(closestPlayer))
+            {
+                player = closestPlayer;
+                isChasing = true;
+            }
+>>>>>>> Stashed changes
         }
         else
         {
             player = null;
             isChasing = false;
+<<<<<<< Updated upstream
             isAlerted = false;
+=======
+            agent.speed = patrolSpeed; // Retour à la vitesse de patrouille
+>>>>>>> Stashed changes
         }
     }
 
@@ -117,7 +150,11 @@ public class DroneAI : MonoBehaviour
 
         if (Vector3.Distance(transform.position, player.position) <= attackRadius)
         {
-            AttackPlayer();
+                        if (Time.time >= lastAttackTime + attackCooldown)
+            {
+                lastAttackTime = Time.time;
+                AttackPlayer();
+            }
         }
     }
 
@@ -136,6 +173,7 @@ public class DroneAI : MonoBehaviour
         currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
     }
 
+<<<<<<< Updated upstream
     private void HandleAlertState()
     {
         alertTimer -= Time.deltaTime;
@@ -180,6 +218,16 @@ public class DroneAI : MonoBehaviour
             Quaternion targetRotation = Quaternion.LookRotation(lookDirection.normalized);
             transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
         }
+=======
+    private bool HasLineOfSight(Transform target)
+    {
+                Vector3 directionToTarget = (target.position - transform.position).normalized;
+        if (Physics.Raycast(transform.position, directionToTarget, out RaycastHit hit, detectionRadius))
+        {
+            return hit.transform == target;
+        }
+        return false;
+>>>>>>> Stashed changes
     }
 
     private void OnDrawGizmosSelected()
