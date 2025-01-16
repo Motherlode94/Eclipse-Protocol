@@ -42,10 +42,7 @@ public class DroneAI : MonoBehaviour
 
     private void Update()
     {
-<<<<<<< Updated upstream
-=======
         DetectPlayer();
->>>>>>> Stashed changes
         if (isChasing && player != null)
         {
             ChasePlayer();
@@ -80,27 +77,6 @@ public class DroneAI : MonoBehaviour
                 Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
         if (hits.Length > 0)
         {
-<<<<<<< Updated upstream
-            Transform potentialPlayer = hits[0].transform;
-
-            // Vérifie la ligne de vue
-            if (HasLineOfSight(potentialPlayer))
-            {
-                player = potentialPlayer;
-                isChasing = Vector3.Distance(transform.position, player.position) <= detectionRadius;
-                isAlerted = false; // Stop alerte si on voit le joueur
-                alertTimer = 0f;
-                return;
-            }
-        }
-
-        // Si aucune détection, passe en mode alerte
-        if (isChasing)
-        {
-            isChasing = false;
-            isAlerted = true;
-            alertTimer = alertDuration;
-=======
             Transform closestPlayer = null;
             float closestDistance = Mathf.Infinity;
 
@@ -119,17 +95,12 @@ public class DroneAI : MonoBehaviour
                 player = closestPlayer;
                 isChasing = true;
             }
->>>>>>> Stashed changes
         }
         else
         {
             player = null;
             isChasing = false;
-<<<<<<< Updated upstream
             isAlerted = false;
-=======
-            agent.speed = patrolSpeed; // Retour à la vitesse de patrouille
->>>>>>> Stashed changes
         }
     }
 
@@ -173,52 +144,6 @@ public class DroneAI : MonoBehaviour
         currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
     }
 
-<<<<<<< Updated upstream
-    private void HandleAlertState()
-    {
-        alertTimer -= Time.deltaTime;
-        if (alertTimer <= 0f)
-        {
-            isAlerted = false;
-            MoveToNextPatrolPoint();
-        }
-        else
-        {
-            Debug.Log("Drone is in alert mode...");
-            // Optionnel : Ajouter des animations ou des mouvements aléatoires pendant l'alerte
-        }
-    }
-
-    private void UpdateLookDirection()
-    {
-        // Si le drone est immobile, ne pas ajuster la rotation
-        if (agent.velocity.sqrMagnitude <= 0.01f) return;
-
-        Vector3 lookDirection;
-
-        // Détermine la direction à suivre
-        if (isChasing && player != null)
-        {
-            lookDirection = player.position - transform.position;
-        }
-        else if (look != null)
-        {
-            lookDirection = look.position - transform.position;
-        }
-        else
-        {
-            lookDirection = agent.velocity; // Direction actuelle de déplacement
-        }
-
-        lookDirection.y = 0; // Ignore les différences de hauteur
-
-        // Ajuste la rotation uniquement si la direction est significative
-        if (lookDirection.magnitude > 0.1f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(lookDirection.normalized);
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
-        }
-=======
     private bool HasLineOfSight(Transform target)
     {
                 Vector3 directionToTarget = (target.position - transform.position).normalized;
@@ -227,7 +152,6 @@ public class DroneAI : MonoBehaviour
             return hit.transform == target;
         }
         return false;
->>>>>>> Stashed changes
     }
 
     private void OnDrawGizmosSelected()
