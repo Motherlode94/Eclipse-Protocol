@@ -31,11 +31,21 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private bool jumpInput = false;
     private int currentJumpCount = 0;
     private int maxJumpCount = 2;
+    private PlayerStats playerStats;
+    private BoostItem nearbyBoostItem; // Référence au BoostItem
+    private UIManager uiManager; // Référence à l'UI Manager
+    private bool isInteracting; // Vérifie si le joueur interagit
+    private InventoryManager inventoryManager;
+    public GameObject inventoryPanel;
 
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        playerStats = GetComponent<PlayerStats>();
+        inventoryManager = FindObjectOfType<InventoryManager>();
+        uiManager = FindObjectOfType<UIManager>(); // Récupère le UIManager
+        inventoryManager = FindObjectOfType<InventoryManager>();
 
         controls = new EclipseProtocol();
 
@@ -51,6 +61,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         controls.Player.Run.canceled += ctx => OnRun(ctx);
         controls.Player.Sprint.performed += ctx => OnSprint(ctx);
         controls.Player.Sprint.canceled += ctx => OnSprint(ctx);
+        controls.Player.Inventory.performed += OnInventory;
+
 
         cameraOffset = cameraTransform.position - transform.position;
     }
@@ -135,6 +147,77 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
             Debug.Log("Fire action triggered");
         }
     }
+    public void OnInventory(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            ToggleInventory();
+        }
+    }
+
+    private void ToggleInventory()
+    {
+        if (inventoryPanel != null)
+        {
+            inventoryPanel.SetActive(!inventoryPanel.activeSelf);
+        }
+        else
+        {
+            Debug.LogError("InventoryPanel is not assigned in the Inspector!");
+        }
+    }
+
+        private void OnTriggerEnter(Collider other)
+    {
+            InventoryItem item = other.GetComponent<PickupItem>()?.item;
+    if (item != null)
+    {
+        Debug.Log($"Item détecté : {item.itemName}");
+        if (inventoryManager.AddItem(item))
+        {
+            Destroy(other.gameObject);
+        }
+    }
+    else
+    {
+        Debug.Log("Aucun item détecté sur cet objet.");
+    }
+        BoostItem boost = other.GetComponent<BoostItem>();
+        if (boost != null)
+        {
+            nearbyBoostItem = boost;
+            uiManager?.ToggleInteractionPrompt(true);
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.GetComponent<BoostItem>() == nearbyBoostItem)
+        {
+            nearbyBoostItem = null;
+            uiManager?.ToggleInteractionPrompt(false);
+        }
+    }
+
+        public void OnInteract(InputAction.CallbackContext context)
+    {
+        if (context.performed && nearbyBoostItem != null)
+        {
+            InteractWithBoostItem();
+        }
+    }
+
+    private void InteractWithBoostItem()
+    {
+        if (nearbyBoostItem != null)
+        {
+            nearbyBoostItem.ApplyBoost(playerStats, this);
+            Destroy(nearbyBoostItem.gameObject);
+            nearbyBoostItem = null;
+            uiManager?.ToggleInteractionPrompt(false);
+            Debug.Log("BoostItem consommé !");
+        }
+    }
 
     private void Update()
     {
@@ -142,7 +225,36 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         HandleGravityAndJump();
         HandleAnimations();
         HandleCamera();
+        HandleStamina();
         UpdateAnimations();
+
+        if (nearbyBoostItem != null && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            InteractWithBoostItem();
+        }
+    }
+private void HandleStamina()
+{
+        if ((isRunning || isSprinting) && playerStats.currentStamina > 0)
+        {
+            float staminaCost = isSprinting ? 20f : 10f;
+            playerStats.UseStamina(staminaCost * Time.deltaTime);
+        }
+        else if (!isRunning && !isSprinting && playerStats.currentStamina < playerStats.maxStamina)
+        {
+            playerStats.RegenerateStamina(playerStats.staminaRegenRate * Time.deltaTime);
+        }
+
+        if (playerStats.currentStamina <= 0)
+        {
+            isRunning = false;
+            isSprinting = false;
+        }
+}
+    public void ConsumeBoost(BoostItem boostItem)
+    {
+            boostItem.ApplyBoost(playerStats, this);
+    Debug.Log($"Boost activé : {boostItem.boostType}, durée : {boostItem.boostDuration}s");
     }
 
     private void HandleMovement()
@@ -229,8 +341,7 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         jumpInput = false; // Réinitialise l'entrée de saut
     }
     }
-
-    private void HandleAnimations()
+        private void HandleAnimations()
     {
         if (animator != null)
         {
