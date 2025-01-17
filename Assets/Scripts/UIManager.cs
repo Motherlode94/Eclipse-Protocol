@@ -9,9 +9,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI xpText;
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI moneyText;
-    public TextMeshProUGUI damageText; // Référence au texte de dégâts
     public GameObject interactionPrompt;
-        public GameObject damageTextPrefab; // Préfabriqué pour le texte des dégâts
+    public GameObject damageTextPrefab; // Préfabriqué pour le texte des dégâts
     public Canvas mainCanvas; // Canvas principal pour positionner le texte
 
     [Header("XP Display")]
@@ -27,26 +26,39 @@ public class UIManager : MonoBehaviour
     public AudioSource uiAudioSource;
     public AudioClip levelUpSound;
     public AudioClip questCompleteSound;
+
     private void Start()
     {
-        if (damageText != null)
+        if (damageTextPrefab != null)
         {
-            damageText.gameObject.SetActive(false);
+            damageTextPrefab.SetActive(false);
         }
     }
 
     public void ShowDamageText(int damage, Vector3 position)
     {
-        if (damageText != null)
+        if (damageTextPrefab == null || mainCanvas == null)
         {
-            damageText.text = $"-{damage}";
-            damageText.transform.position = Camera.main.WorldToScreenPoint(position);
-            damageText.gameObject.SetActive(true);
-
-            // Masquer le texte après un court délai
-            CancelInvoke(nameof(HideDamageText));
-            Invoke(nameof(HideDamageText), 1.5f);
+            Debug.LogError("DamageTextPrefab ou MainCanvas n'est pas assigné dans l'inspecteur.");
+            return;
         }
+
+        // Instancie le texte des dégâts
+        GameObject damageTextInstance = Instantiate(damageTextPrefab, mainCanvas.transform);
+
+        // Convertit la position du monde en position écran
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(position);
+        damageTextInstance.transform.position = screenPosition;
+
+        // Ajoute le texte des dégâts
+        TextMeshProUGUI damageInstanceText = damageTextInstance.GetComponent<TextMeshProUGUI>();
+        if (damageInstanceText != null)
+        {
+            damageInstanceText.text = $"-{damage}";
+        }
+
+        // Détruit l'objet après 1.5 secondes
+        Destroy(damageTextInstance, 1.5f);
     }
 
     private void Awake()
@@ -184,7 +196,6 @@ public class UIManager : MonoBehaviour
             levelUpPanel.SetActive(true);
             levelUpPanel.GetComponentInChildren<TextMeshProUGUI>().text = $"LEVEL UP! Level {newLevel}";
 
-            // Ajout d'une animation d'échelle
             StartCoroutine(AnimateLevelUpPanel(levelUpPanel.transform, 0.5f));
 
             if (uiAudioSource != null && levelUpSound != null)
@@ -213,11 +224,11 @@ public class UIManager : MonoBehaviour
         panelTransform.localScale = originalScale;
     }
 
-    private void HideDamageText()
+    private void HideXPLog()
     {
-        if (damageText != null)
+        if (xpLog != null)
         {
-            damageText.gameObject.SetActive(false);
+            xpLog.SetActive(false);
         }
     }
 
@@ -226,14 +237,6 @@ public class UIManager : MonoBehaviour
         if (levelUpPanel != null)
         {
             levelUpPanel.SetActive(false);
-        }
-    }
-
-    private void HideXPLog()
-    {
-        if (xpLog != null)
-        {
-            xpLog.SetActive(false);
         }
     }
 }

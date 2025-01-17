@@ -156,7 +156,9 @@ public class PlayerStats : MonoBehaviour
     currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
     uiManager?.UpdateHealth(currentHealth); // Met à jour l'interface utilisateur
-    uiManager?.ShowDamageText(damage, transform.position); // Affiche les dégâts au joueur
+
+    // Ajout de la position actuelle du joueur pour afficher les dégâts
+    uiManager?.ShowDamageText(damage, transform.position);
 
     regenTimer = 0f; // Réinitialise le timer de régénération
 
@@ -164,12 +166,6 @@ public class PlayerStats : MonoBehaviour
     {
         Die();
     }
-    
-    }
-
-    private void DisplayDamage(int damage)
-    {
-        uiManager?.ShowDamageText(damage);
     }
 
     private void Die()
