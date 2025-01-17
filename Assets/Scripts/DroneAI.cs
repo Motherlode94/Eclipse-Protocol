@@ -7,31 +7,31 @@ public class DroneAI : MonoBehaviour
     public float detectionRadius = 10f;
     public float attackRadius = 5f;
     public LayerMask playerLayer;
+    public float fieldOfViewAngle = 120f;
 
     [Header("Patrol Settings")]
     public Transform[] patrolPoints;
     public float patrolSpeed = 3.5f;
     public float chaseSpeed = 6f;
-    public float alertDuration = 3f; // Temps en alerte avant de revenir à la patrouille
+    public float alertDuration = 3f;
 
     [Header("Look Settings")]
-    public Transform look; // Transform pour définir la direction du regard
+    public Transform look; 
 
     private NavMeshAgent agent;
     private Transform player;
     private int currentPatrolIndex = 0;
     private bool isAlerted = false;
     private float alertTimer = 0f;
-    public bool isChasing { get; private set; } // Utilisation unique de `isChasing`
+    public bool isChasing { get; private set; }
 
-    // Cooldown pour la détection
     private float detectCooldown = 0.2f;
     private float detectTimer = 0f;
-    public Transform Player => player;
-
-    [Header("Attack Settings")]
-    public float attackCooldown = 2f;
+    private float attackCooldown = 2f;
     private float lastAttackTime = 0f;
+
+    // Propriété publique pour accéder au joueur
+    public Transform Player => player;
 
     private void Start()
     {
@@ -42,7 +42,6 @@ public class DroneAI : MonoBehaviour
 
     private void Update()
     {
-        DetectPlayer();
         if (isChasing && player != null)
         {
             ChasePlayer();
@@ -74,33 +73,29 @@ public class DroneAI : MonoBehaviour
 
     private void DetectPlayer()
     {
-                Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
-        if (hits.Length > 0)
+        Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
+        foreach (var hit in hits)
         {
-            Transform closestPlayer = null;
-            float closestDistance = Mathf.Infinity;
-
-            foreach (var hit in hits)
+            Transform potentialPlayer = hit.transform;
+            if (HasLineOfSight(potentialPlayer) && IsInFieldOfView(potentialPlayer))
             {
-                float distance = Vector3.Distance(transform.position, hit.transform.position);
-                if (distance < closestDistance)
-                {
-                    closestPlayer = hit.transform;
-                    closestDistance = distance;
-                }
-            }
-
-            if (closestPlayer != null && HasLineOfSight(closestPlayer))
-            {
-                player = closestPlayer;
+                player = potentialPlayer;
                 isChasing = true;
+                isAlerted = true;
+                return;
             }
         }
-        else
+
+        if (isAlerted)
         {
-            player = null;
-            isChasing = false;
-            isAlerted = false;
+            alertTimer += Time.deltaTime;
+            if (alertTimer >= alertDuration)
+            {
+                isAlerted = false;
+                alertTimer = 0f;
+                player = null;
+                isChasing = false;
+            }
         }
     }
 
@@ -114,14 +109,21 @@ public class DroneAI : MonoBehaviour
         return false;
     }
 
-    public void ChasePlayer()
+    private bool IsInFieldOfView(Transform target)
+    {
+        Vector3 directionToTarget = (target.position - transform.position).normalized;
+        float angle = Vector3.Angle(transform.forward, directionToTarget);
+        return angle <= fieldOfViewAngle / 2f;
+    }
+
+    private void ChasePlayer()
     {
         agent.speed = chaseSpeed;
         agent.SetDestination(player.position);
 
         if (Vector3.Distance(transform.position, player.position) <= attackRadius)
         {
-                        if (Time.time >= lastAttackTime + attackCooldown)
+            if (Time.time >= lastAttackTime + attackCooldown)
             {
                 lastAttackTime = Time.time;
                 AttackPlayer();
@@ -129,47 +131,70 @@ public class DroneAI : MonoBehaviour
         }
     }
 
-    public void AttackPlayer()
+    private void AttackPlayer()
     {
         Debug.Log("Drone is attacking the player!");
-        // Implémentez ici les effets d'attaque (par exemple : réduire la santé du joueur)
+        // Effets d'attaque à implémenter
     }
 
     private void MoveToNextPatrolPoint()
     {
-        if (patrolPoints.Length == 0) return;
-
-        agent.speed = patrolSpeed; // Réinitialise la vitesse
-        agent.destination = patrolPoints[currentPatrolIndex].position;
-        currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
+        if (patrolPoints.Length == 0)
+        {
+            Vector3 randomPoint = transform.position + Random.insideUnitSphere * detectionRadius;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomPoint, out hit, detectionRadius, NavMesh.AllAreas))
+            {
+                agent.destination = hit.position;
+            }
+        }
+        else
+        {
+            agent.speed = patrolSpeed;
+            agent.destination = patrolPoints[currentPatrolIndex].position;
+            currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
+        }
     }
 
-    private bool HasLineOfSight(Transform target)
+    private void HandleAlertState()
     {
-                Vector3 directionToTarget = (target.position - transform.position).normalized;
-        if (Physics.Raycast(transform.position, directionToTarget, out RaycastHit hit, detectionRadius))
+        alertTimer += Time.deltaTime;
+        if (alertTimer >= alertDuration)
         {
-            return hit.transform == target;
+            isAlerted = false;
+            alertTimer = 0f;
+            MoveToNextPatrolPoint();
         }
-        return false;
+    }
+
+    private void UpdateLookDirection()
+    {
+        if (look != null && player != null)
+        {
+            look.position = Vector3.Lerp(look.position, player.position, Time.deltaTime * 5f);
+        }
     }
 
     private void OnDrawGizmosSelected()
     {
-        // Détection
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
 
-        // Attaque
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
 
-        // Direction de regard
         if (look != null)
         {
             Gizmos.color = Color.blue;
             Gizmos.DrawLine(transform.position, look.position);
             Gizmos.DrawSphere(look.position, 0.2f);
         }
+
+        Vector3 fovStart = Quaternion.Euler(0, -fieldOfViewAngle / 2f, 0) * transform.forward;
+        Vector3 fovEnd = Quaternion.Euler(0, fieldOfViewAngle / 2f, 0) * transform.forward;
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawRay(transform.position, fovStart * detectionRadius);
+        Gizmos.DrawRay(transform.position, fovEnd * detectionRadius);
     }
 }
