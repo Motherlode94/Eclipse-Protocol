@@ -34,6 +34,10 @@ public class PlayerStats : MonoBehaviour
     public AudioClip deathSound;
     private AudioSource audioSource;
 
+    [Header("Temporary Buffs")]
+    private float buffTimer = 0f;
+    private int temporaryMaxHealthBonus = 0;
+
     private void Awake()
     {
         currentHealth = maxHealth;
@@ -63,6 +67,7 @@ public class PlayerStats : MonoBehaviour
     {
         HandleStamina(); // Gestion de la stamina pour les mouvements
         RegenerateStats(); // Régénération après un délai
+        HandleBuffTimer(); // Gestion des buffs temporaires
     }
 
     private void HandleStamina()
@@ -147,17 +152,24 @@ public class PlayerStats : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        currentHealth -= damage;
-        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+            currentHealth -= damage;
+    currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
-        uiManager?.UpdateHealth(currentHealth); // Met à jour l'interface utilisateur
+    uiManager?.UpdateHealth(currentHealth); // Met à jour l'interface utilisateur
+    uiManager?.ShowDamageText(damage, transform.position); // Affiche les dégâts au joueur
 
-        regenTimer = 0f; // Réinitialise le timer de régénération
+    regenTimer = 0f; // Réinitialise le timer de régénération
 
-        if (currentHealth <= 0)
-        {
-            Die();
-        }
+    if (currentHealth <= 0)
+    {
+        Die();
+    }
+    
+    }
+
+    private void DisplayDamage(int damage)
+    {
+        uiManager?.ShowDamageText(damage);
     }
 
     private void Die()
@@ -235,5 +247,52 @@ public class PlayerStats : MonoBehaviour
         uiManager?.UpdateStamina(currentStamina);
         uiManager?.UpdateXP(currentXP, requiredXP, currentLevel, 0);
         uiManager?.UpdateMoney(currentMoney);
+    }
+
+    public void ApplyTemporaryHealthBuff(int bonusAmount, float duration)
+    {
+        temporaryMaxHealthBonus = bonusAmount;
+        maxHealth += bonusAmount;
+        currentHealth += bonusAmount; // Augmente également la santé actuelle
+        buffTimer = duration;
+
+        Debug.Log($"Buff appliqué : +{bonusAmount} santé pour {duration} secondes");
+    }
+
+    private void HandleBuffTimer()
+    {
+        if (buffTimer > 0)
+        {
+            buffTimer -= Time.deltaTime;
+
+            if (buffTimer <= 0)
+            {
+                maxHealth -= temporaryMaxHealthBonus;
+                currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+                temporaryMaxHealthBonus = 0;
+
+                Debug.Log("Buff expiré !");
+            }
+        }
+    }
+
+    public void SaveStats()
+    {
+        PlayerPrefs.SetInt("Health", currentHealth);
+        PlayerPrefs.SetInt("Stamina", currentStamina);
+        PlayerPrefs.SetInt("XP", currentXP);
+        PlayerPrefs.SetInt("Level", currentLevel);
+        PlayerPrefs.SetInt("Money", currentMoney);
+        PlayerPrefs.Save();
+    }
+
+    public void LoadStats()
+    {
+        currentHealth = PlayerPrefs.GetInt("Health", maxHealth);
+        currentStamina = PlayerPrefs.GetInt("Stamina", maxStamina);
+        currentXP = PlayerPrefs.GetInt("XP", 0);
+        currentLevel = PlayerPrefs.GetInt("Level", 1);
+        currentMoney = PlayerPrefs.GetInt("Money", 0);
+        UpdateUI();
     }
 }
