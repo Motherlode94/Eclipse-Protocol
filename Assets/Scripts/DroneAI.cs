@@ -16,7 +16,12 @@ public class DroneAI : MonoBehaviour
     public float alertDuration = 3f;
 
     [Header("Look Settings")]
-    public Transform look; 
+    public Transform look;
+
+    [Header("Audio & Visual Effects")]
+    public AudioClip alertSound;
+    public AudioClip attackSound;
+    public ParticleSystem alertEffect;
 
     private NavMeshAgent agent;
     private Transform player;
@@ -30,13 +35,17 @@ public class DroneAI : MonoBehaviour
     private float attackCooldown = 2f;
     private float lastAttackTime = 0f;
 
+    private AudioSource audioSource;
+
     // Propriété publique pour accéder au joueur
     public Transform Player => player;
 
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        audioSource = GetComponent<AudioSource>();
         agent.speed = patrolSpeed;
+
         MoveToNextPatrolPoint();
     }
 
@@ -82,6 +91,17 @@ public class DroneAI : MonoBehaviour
                 player = potentialPlayer;
                 isChasing = true;
                 isAlerted = true;
+
+                if (alertEffect != null)
+                {
+                    alertEffect.Play();
+                }
+
+                if (alertSound != null && audioSource != null)
+                {
+                    audioSource.PlayOneShot(alertSound);
+                }
+
                 return;
             }
         }
@@ -118,6 +138,8 @@ public class DroneAI : MonoBehaviour
 
     private void ChasePlayer()
     {
+        if (player == null) return;
+
         agent.speed = chaseSpeed;
         agent.SetDestination(player.position);
 
@@ -133,8 +155,13 @@ public class DroneAI : MonoBehaviour
 
     private void AttackPlayer()
     {
+        if (attackSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(attackSound);
+        }
+
         Debug.Log("Drone is attacking the player!");
-        // Effets d'attaque à implémenter
+        // Ajouter les effets ou les dégâts ici
     }
 
     private void MoveToNextPatrolPoint()
@@ -142,8 +169,7 @@ public class DroneAI : MonoBehaviour
         if (patrolPoints.Length == 0)
         {
             Vector3 randomPoint = transform.position + Random.insideUnitSphere * detectionRadius;
-            NavMeshHit hit;
-            if (NavMesh.SamplePosition(randomPoint, out hit, detectionRadius, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, detectionRadius, NavMesh.AllAreas))
             {
                 agent.destination = hit.position;
             }

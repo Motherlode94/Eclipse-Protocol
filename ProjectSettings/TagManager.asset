@@ -6,6 +6,7 @@ TagManager:
   tags:
   - CoverCrouchZone
   - CoverStandZone
+  - Spaceship
   layers:
   - Default
   - TransparentFX
@@ -17,8 +18,8 @@ TagManager:
   - Enemy
   - Ally
   - coverLayer
-  - 
-  - 
+  - groundmask
+  - Interact
   - 
   - 
   - 

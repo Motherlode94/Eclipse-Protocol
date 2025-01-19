@@ -1275,6 +1275,7 @@ Transform:
   - {fileID: 6194201560163187536}
   - {fileID: 6972515347168736252}
   - {fileID: 4369890864714741049}
+  - {fileID: 8886939006838543602}
   m_Father: {fileID: 6782466659332924442}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5793067886555905614
@@ -1340,6 +1341,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7615487267684784172}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6010986027763439560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 883770293900201165}
+  m_Layer: 6
+  m_Name: HolderL
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &883770293900201165
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6010986027763439560}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2195554200712197983}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6024343027718240763
 GameObject:
   m_ObjectHideFlags: 0
@@ -1404,6 +1436,37 @@ Transform:
   - {fileID: 7156367243577501866}
   m_Father: {fileID: 1914009716113476211}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6299150654728718935
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8886939006838543602}
+  m_Layer: 6
+  m_Name: HolderR
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8886939006838543602
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6299150654728718935}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5698768869109640475}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6452452419427441537
 GameObject:
   m_ObjectHideFlags: 0
@@ -1414,10 +1477,15 @@ GameObject:
   m_Component:
   - component: {fileID: 3071833871565167867}
   - component: {fileID: 545571321086838873}
+  - component: {fileID: 2824256984942411200}
   - component: {fileID: 8773477754977823759}
   - component: {fileID: 6028276437853315095}
   - component: {fileID: 5950309244698770994}
   - component: {fileID: 8586979186428741881}
+  - component: {fileID: 2391447200081290168}
+  - component: {fileID: 845422932172110639}
+  - component: {fileID: 2244528590493133269}
+  - component: {fileID: 4304351672801819217}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -1463,6 +1531,29 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!136 &2824256984942411200
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6452452419427441537}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!143 &8773477754977823759
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1507,8 +1598,21 @@ MonoBehaviour:
   jumpHeight: 2
   rollSpeed: 7
   gravity: -9.81
+  groundYOffset: 0.6
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 1024
   cameraTransform: {fileID: 0}
   cameraSensitivity: 1
+  aimFOV: 40
+  normalFOV: 60
+  aimSmoothSpeed: 10
+  aimOffset: {x: 0, y: 1.5, z: -2}
+  minVerticalAngle: -60
+  maxVerticalAngle: 60
+  sprintVFX: {fileID: 198124840688606272, guid: d2bf40a98ef3560439f0badec6115db3,
+    type: 3}
+  jumpVFX: {fileID: 198454861263141294, guid: d6042f989cc140942a980eadd962e2db, type: 3}
   inventoryPanel: {fileID: 0}
 --- !u!114 &5950309244698770994
 MonoBehaviour:
@@ -1612,6 +1716,14 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: faea574f-8046-4726-b8c4-00491074fcec
     m_ActionName: Player/Interact[/Keyboard/e]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: c58f76ae-156e-4a69-8190-1a956b9ac183
+    m_ActionName: Player/Inventory[/Keyboard/i]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 60d25979-d7b4-468e-8674-f89193e2870b
+    m_ActionName: Player/Aim[/Mouse/middleButton]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
@@ -1635,10 +1747,186 @@ MonoBehaviour:
   currentStamina: 0
   currentXP: 0
   requiredXP: 100
+  currentLevel: 1
   currentMoney: 0
   healthRegenRate: 5
   staminaRegenRate: 10
   regenDelay: 5
+  staminaRunDrainRate: 10
+  staminaSprintDrainRate: 20
+  isRunning: 0
+  isSprinting: 0
+  deathEffect: {fileID: 0}
+  deathSound: {fileID: 0}
+  SpeedMultiplier: 1
+  ThrustMultiplier: 1
+  ThrustForce: 10
+  MaxSpeed: 20
+  RotationSpeed: 50
+  BoostMultiplier: 2
+--- !u!114 &2391447200081290168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6452452419427441537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18790636a1b3eb24a8cf3dc5a9b49e79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inventorySlots: []
+  maxSlots: 20
+--- !u!114 &845422932172110639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6452452419427441537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f73355be289bb2d4bb6c0131b8352b73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  equippedWeapon: {fileID: 0}
+  weaponHolder: {fileID: 8886939006838543602}
+  weaponOffset: {x: 0, y: 0, z: 0}
+  weaponRotation: {x: 0, y: 0, z: 0}
+  shootSound: {fileID: 0}
+--- !u!114 &2244528590493133269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6452452419427441537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 995eb71a78f1ea54197652d8bd028981, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interactionRange: 3
+  interactionLayer:
+    serializedVersion: 2
+    m_Bits: 2048
+  interactAction:
+    m_Name: Interact
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: b1d0483e-6b36-4a70-89d9-1c54cd543a80
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: f0a72ce9-030f-40f6-9ef2-8b959cd8a42d
+      m_Path: <Keyboard>/e
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Interact
+      m_Flags: 0
+    - m_Name: ZQSD
+      m_Id: 01d974d4-a5d4-46df-bda7-6bee96addaba
+      m_Path: Dpad
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Interact
+      m_Flags: 4
+    - m_Name: up
+      m_Id: 34295830-e61f-4e88-9ded-d1af9d432c53
+      m_Path: <Keyboard>/z
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: up
+      m_Id: 73402334-87fb-4a23-af03-2bba54aa32b9
+      m_Path: <Keyboard>/upArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: down
+      m_Id: 11230b84-2f77-471e-93e8-772438c6e072
+      m_Path: <Keyboard>/s
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: down
+      m_Id: a978d5d7-c5a8-4a37-8a5c-f2737f7bdaa7
+      m_Path: <Keyboard>/downArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: left
+      m_Id: 36399d68-1d38-4101-953b-4c7bb151e6c9
+      m_Path: <Keyboard>/q
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: left
+      m_Id: ef124d5e-fc1f-4af9-9b36-97594e302f14
+      m_Path: <Keyboard>/leftArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: right
+      m_Id: 6844dbab-96d0-4310-af35-eb2a6ff4fd2d
+      m_Path: <Keyboard>/d
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: right
+      m_Id: 92ccc006-6e3a-46a0-b1c7-9972cf561cea
+      m_Path: <Keyboard>/rightArrow
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: ;Keyboard&Mouse
+      m_Action: Interact
+      m_Flags: 8
+    - m_Name: 
+      m_Id: 4df40ec1-3647-498e-9c4e-e07f6d214633
+      m_Path: <Joystick>/{Hatswitch}
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: Joystick
+      m_Action: Interact
+      m_Flags: 0
+    m_Flags: 0
+--- !u!114 &4304351672801819217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6452452419427441537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 792dcacd1a5e2c24683a3b272a63a496, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  xpRequiredToLevelUp: 100
+  levelUpXPIncrease: 50
+  healthBonusPerLevel: 10
+  staminaBonusPerLevel: 5
+  levelUpEffect: {fileID: 0}
+  levelUpSound: {fileID: 0}
+  playerStats: {fileID: 8586979186428741881}
 --- !u!1 &6683979540038847397
 GameObject:
   m_ObjectHideFlags: 0
@@ -2156,6 +2444,7 @@ Transform:
   - {fileID: 1914009716113476211}
   - {fileID: 5799733871532258323}
   - {fileID: 6613726879712559046}
+  - {fileID: 883770293900201165}
   m_Father: {fileID: 1121345117746378028}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8654007428868319341

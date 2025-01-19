@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerStats : MonoBehaviour
@@ -37,6 +39,15 @@ public class PlayerStats : MonoBehaviour
     [Header("Temporary Buffs")]
     private float buffTimer = 0f;
     private int temporaryMaxHealthBonus = 0;
+    public float SpeedMultiplier = 1.0f; // Modifie la vitesse max du vaisseau
+    public float ThrustMultiplier = 1.0f; // Modifie la force de propulsion
+    public float ThrustForce = 10f;
+    public float MaxSpeed = 20f;
+    public float RotationSpeed = 50f;
+    public float BoostMultiplier = 2f;
+    private List<float> healthBuffs = new List<float>();
+    private List<float> staminaBuffs = new List<float>();
+
 
     private void Awake()
     {
@@ -216,6 +227,7 @@ public class PlayerStats : MonoBehaviour
             LevelUp();
         }
         uiManager?.UpdateXP(currentXP, requiredXP, currentLevel, amount);
+        UpdateUI(); // Mets à jour l'interface utilisateur
     }
 
     public void AddMoney(int amount)
@@ -245,6 +257,53 @@ public class PlayerStats : MonoBehaviour
         uiManager?.UpdateMoney(currentMoney);
     }
 
+    public void ApplyBuff(float healthBonus, float staminaBonus, float duration)
+{
+    if (healthBonus > 0)
+    {
+        maxHealth += Mathf.RoundToInt(healthBonus);
+        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+        healthBuffs.Add(duration);
+    }
+
+    if (staminaBonus > 0)
+    {
+        maxStamina += Mathf.RoundToInt(staminaBonus);
+        currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
+        staminaBuffs.Add(duration);
+    }
+
+    StartCoroutine(HandleBuffTimer());
+}
+
+private IEnumerator HandleBuffTimer()
+{
+    while (healthBuffs.Count > 0 || staminaBuffs.Count > 0)
+    {
+        for (int i = healthBuffs.Count - 1; i >= 0; i--)
+        {
+            healthBuffs[i] -= Time.deltaTime;
+            if (healthBuffs[i] <= 0)
+            {
+                maxHealth -= Mathf.RoundToInt(healthBuffs[i]);
+                healthBuffs.RemoveAt(i);
+            }
+        }
+
+        for (int i = staminaBuffs.Count - 1; i >= 0; i--)
+        {
+            staminaBuffs[i] -= Time.deltaTime;
+            if (staminaBuffs[i] <= 0)
+            {
+                maxStamina -= Mathf.RoundToInt(staminaBuffs[i]);
+                staminaBuffs.RemoveAt(i);
+            }
+        }
+
+        yield return null;
+    }
+}
+
     public void ApplyTemporaryHealthBuff(int bonusAmount, float duration)
     {
         temporaryMaxHealthBonus = bonusAmount;
@@ -253,23 +312,6 @@ public class PlayerStats : MonoBehaviour
         buffTimer = duration;
 
         Debug.Log($"Buff appliqué : +{bonusAmount} santé pour {duration} secondes");
-    }
-
-    private void HandleBuffTimer()
-    {
-        if (buffTimer > 0)
-        {
-            buffTimer -= Time.deltaTime;
-
-            if (buffTimer <= 0)
-            {
-                maxHealth -= temporaryMaxHealthBonus;
-                currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-                temporaryMaxHealthBonus = 0;
-
-                Debug.Log("Buff expiré !");
-            }
-        }
     }
 
     public void SaveStats()

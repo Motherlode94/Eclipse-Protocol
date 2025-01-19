@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections.Generic; // Nécessaire pour utiliser List<>
 
 public class UIManager : MonoBehaviour
 {
@@ -22,6 +23,14 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI alertText;
     public GameObject levelUpPanel;
 
+    [Header("Mission System")]
+    public GameObject objectivesPanel; // Panneau des objectifs
+    public TextMeshProUGUI missionText; // Texte pour afficher la mission active
+    public List<TextMeshProUGUI> objectiveTexts; // Liste des textes pour les objectifs
+    public TextMeshProUGUI chapterTitleText; // Texte pour le titre du chapitre
+    public TextMeshProUGUI locationText; // Texte pour la localisation actuelle
+    public TextMeshProUGUI countdownTimerText; // Texte pour le compte à rebours
+
     [Header("Audio Feedback")]
     public AudioSource uiAudioSource;
     public AudioClip levelUpSound;
@@ -32,6 +41,10 @@ public class UIManager : MonoBehaviour
         if (damageTextPrefab != null)
         {
             damageTextPrefab.SetActive(false);
+        }
+        if (objectivesPanel != null)
+        {
+            objectivesPanel.SetActive(false);
         }
     }
 
@@ -93,6 +106,10 @@ public class UIManager : MonoBehaviour
         if (xpText == null) Debug.LogError("xpText n'est pas assigné !");
         if (levelText == null) Debug.LogError("levelText n'est pas assigné !");
         if (moneyText == null) Debug.LogError("moneyText n'est pas assigné !");
+        if (objectiveTexts.Count == 0) Debug.LogWarning("Aucun texte d'objectif assigné !");
+        if (chapterTitleText == null) Debug.LogWarning("chapterTitleText n'est pas assigné !");
+        if (locationText == null) Debug.LogWarning("locationText n'est pas assigné !");
+        if (countdownTimerText == null) Debug.LogWarning("countdownTimerText n'est pas assigné !");
         if (xpLog == null) Debug.LogWarning("xpLog n'est pas assigné !");
         if (alertText == null) Debug.LogWarning("alertText n'est pas assigné !");
     }
@@ -110,18 +127,15 @@ public class UIManager : MonoBehaviour
 
     public void UpdateXP(int currentXP, int maxXP, int currentLevel, int xpGained)
     {
-        // Affichage dans le panneau principal
         xpText.text = $"XP : {currentXP}/{maxXP}";
         levelText.text = $"Level : {currentLevel}";
 
-        // Mise à jour du GameObject xpLog
         if (xpLog != null)
         {
             xpLog.SetActive(true);
             xpGainedText.text = $"+{xpGained} XP";
             xpTotalText.text = $"XP : {currentXP}/{maxXP}";
 
-            // Masque le log après une courte durée
             CancelInvoke(nameof(HideXPLog));
             Invoke(nameof(HideXPLog), 2f);
         }
@@ -136,6 +150,46 @@ public class UIManager : MonoBehaviour
     {
         moneyText.text = $"Money : {currentMoney}";
         FlashText(moneyText, Color.green, 0.5f);
+    }
+
+        public void UpdateObjectives(List<string> objectives)
+    {
+        if (objectiveTexts.Count != objectives.Count)
+        {
+            Debug.LogWarning("Le nombre d'objectifs assignés ne correspond pas au nombre d'éléments dans la liste.");
+            return;
+        }
+
+        for (int i = 0; i < objectives.Count; i++)
+        {
+            objectiveTexts[i].text = objectives[i];
+        }
+
+        objectivesPanel.SetActive(true);
+    }
+
+    public void UpdateChapterTitle(string title)
+    {
+        if (chapterTitleText != null)
+        {
+            chapterTitleText.text = title;
+        }
+    }
+
+    public void UpdateLocation(string location)
+    {
+        if (locationText != null)
+        {
+            locationText.text = location;
+        }
+    }
+
+    public void UpdateCountdown(float timeRemaining)
+    {
+        if (countdownTimerText != null)
+        {
+            countdownTimerText.text = timeRemaining.ToString("F1") + "s";
+        }
     }
 
     private void ApplyCriticalColor(TextMeshProUGUI textElement, int currentValue, int criticalThreshold)
@@ -189,6 +243,23 @@ public class UIManager : MonoBehaviour
         if (alertText != null) alertText.gameObject.SetActive(false);
     }
 
+    public void UpdateMission(string missionName, string missionDescription)
+    {
+        if (missionText != null)
+        {
+            missionText.text = $"Mission: {missionName}\n{missionDescription}";
+        }
+    }
+
+    public void ShowMissionComplete(string reward)
+    {
+        ShowAlert($"Mission accomplie ! Récompense : {reward}", 3f);
+        if (uiAudioSource != null && questCompleteSound != null)
+        {
+            uiAudioSource.PlayOneShot(questCompleteSound);
+        }
+    }
+
     private void TriggerLevelUp(int newLevel)
     {
         if (levelUpPanel != null)
@@ -210,7 +281,7 @@ public class UIManager : MonoBehaviour
     private System.Collections.IEnumerator AnimateLevelUpPanel(Transform panelTransform, float duration)
     {
         Vector3 originalScale = panelTransform.localScale;
-        Vector3 targetScale = originalScale * 1.2f; // Zoom 20%
+        Vector3 targetScale = originalScale * 1.2f;
         float elapsedTime = 0f;
 
         while (elapsedTime < duration)
@@ -220,7 +291,6 @@ public class UIManager : MonoBehaviour
             yield return null;
         }
 
-        // Retour à la taille d'origine
         panelTransform.localScale = originalScale;
     }
 
