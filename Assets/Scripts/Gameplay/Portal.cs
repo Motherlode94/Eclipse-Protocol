@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections;
 using UnityEngine;
 
 public class Portal : MonoBehaviour
@@ -17,6 +16,9 @@ public class Portal : MonoBehaviour
     private bool canTeleport = true; // Indique si la téléportation est possible
     private AudioSource audioSource;
 
+    private Renderer portalRenderer; // Pour changer la couleur pendant le cooldown
+    private Color originalColor;
+
     private void Start()
     {
         // Ajout d'une source audio pour jouer les sons
@@ -24,6 +26,13 @@ public class Portal : MonoBehaviour
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        // Enregistrement de la couleur d'origine pour feedback visuel
+        portalRenderer = GetComponent<Renderer>();
+        if (portalRenderer != null)
+        {
+            originalColor = portalRenderer.material.color;
         }
     }
 
@@ -50,9 +59,10 @@ public class Portal : MonoBehaviour
         // Joue l'effet visuel au départ
         PlayTeleportEffect(player.transform.position);
 
-        // Téléporte le joueur
+        // Téléporte le joueur avec position et rotation
         player.transform.SetParent(null); // Détache l'objet de tout parent
         player.transform.position = teleportDestination.position;
+        player.transform.rotation = teleportDestination.rotation; // Aligne la rotation sur le portail de destination
 
         // Joue l'effet visuel à l'arrivée
         PlayTeleportEffect(teleportDestination.position);
@@ -81,9 +91,20 @@ public class Portal : MonoBehaviour
 
     private IEnumerator TeleportCooldown()
     {
+        // Active le cooldown et change la couleur
         canTeleport = false;
+        if (portalRenderer != null)
+        {
+            portalRenderer.material.color = Color.red; // Couleur pendant le cooldown
+        }
+
         yield return new WaitForSeconds(teleportCooldown);
+
+        // Réinitialise l'état
         canTeleport = true;
+        if (portalRenderer != null)
+        {
+            portalRenderer.material.color = originalColor;
+        }
     }
 }
-

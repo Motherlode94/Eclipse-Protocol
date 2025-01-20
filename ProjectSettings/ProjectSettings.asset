@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: DefaultCompany
+  companyName: WarLike Gaming
   productName: Eclipse Protocol
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
@@ -913,7 +913,7 @@ PlayerSettings:
   hmiLogStartupTiming: 0
   hmiCpuConfiguration: 
   apiCompatibilityLevel: 6
-  activeInputHandler: 2
+  activeInputHandler: 1
   windowsGamepadBackendHint: 0
   cloudProjectId: 2b7955a3-e5a7-4fad-837e-89f26174badf
   framebufferDepthMemorylessMode: 0

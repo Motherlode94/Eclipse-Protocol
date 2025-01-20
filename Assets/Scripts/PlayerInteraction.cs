@@ -1,16 +1,17 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerInteraction : MonoBehaviour
 {
     [Header("Interaction Settings")]
-    [SerializeField] private float interactionRange = 3f; // Distance maximale pour interagir
-    [SerializeField] private LayerMask interactionLayer; // Masque des objets interactifs
-    [SerializeField] private InputAction interactAction; // Action d'interaction (ex. "E")
+    [Tooltip("Portée de l'interaction")]
+    [SerializeField] private float interactionRange = 3f;
+    [Tooltip("Couches des objets interactifs")]
+    [SerializeField] private LayerMask interactionLayer;
+    [Tooltip("Action d'interaction (ex. touche E)")]
+    [SerializeField] private InputAction interactAction;
 
-    private GameObject currentInteractable; // L'objet interactif détecté
+    private GameObject currentInteractable; // Objet interactif détecté
 
     private void OnEnable()
     {
@@ -31,40 +32,47 @@ public class PlayerInteraction : MonoBehaviour
 
     private void DetectInteractable()
     {
-        // Vérifie les objets interactifs proches du joueur
+        // Vérifie si un objet interactif est à portée
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, transform.forward, out hit, interactionRange, interactionLayer))
+        bool hasHit = Physics.Raycast(transform.position, transform.forward, out hit, interactionRange, interactionLayer);
+
+        if (hasHit)
         {
-            if (hit.collider != null)
+            GameObject detectedObject = hit.collider.gameObject;
+
+            // Evite les traitements inutiles si l'objet détecté est le même
+            if (currentInteractable != detectedObject)
             {
-                currentInteractable = hit.collider.gameObject;
-                Debug.Log($"Interactable detected: {currentInteractable.name}");
+                currentInteractable = detectedObject;
+                Debug.Log($"Nouveau interactable détecté : {currentInteractable.name}");
             }
         }
-        else
+        else if (currentInteractable != null)
         {
-            currentInteractable = null; // Aucun objet interactif détecté
+            Debug.Log("Aucun interactable détecté.");
+            currentInteractable = null;
         }
     }
 
     private void HandleInteraction(InputAction.CallbackContext context)
     {
+        // Vérifie qu'il y a un objet interactif
         if (currentInteractable == null)
         {
-            Debug.Log("No interactable detected.");
+            Debug.Log("Aucun interactable à portée.");
             return;
         }
 
-        // Vérifie si l'objet détecté comporte le script `VehicleInteraction`
+        // Tente d'accéder au script VehicleInteraction
         VehicleInteraction vehicle = currentInteractable.GetComponent<VehicleInteraction>();
         if (vehicle != null)
         {
-            Debug.Log($"Interacting with vehicle: {currentInteractable.name}");
-            vehicle.ForceExit(); // Ou une autre méthode d'interaction
+            Debug.Log($"Interaction avec le véhicule : {currentInteractable.name}");
+            vehicle.ForceExit(); // Appelle la méthode d'interaction
         }
         else
         {
-            Debug.Log($"No VehicleInteraction script found on {currentInteractable.name}");
+            Debug.Log($"L'objet {currentInteractable.name} n'est pas un véhicule.");
         }
     }
 }

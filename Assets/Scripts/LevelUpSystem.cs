@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class LevelUpSystem : MonoBehaviour
@@ -12,23 +11,44 @@ public class LevelUpSystem : MonoBehaviour
     [SerializeField] private GameObject levelUpEffect; // Effet visuel lors de la montée de niveau
     [SerializeField] private AudioClip levelUpSound; // Son joué lors de la montée de niveau
 
+    [Header("Player Reference")]
     [SerializeField] private PlayerStats playerStats; // Assigné via l'inspector
+
+    private AudioSource audioSource;
 
     private void Start()
     {
-        playerStats = GetComponent<PlayerStats>();
+        // Vérifie si le composant PlayerStats est assigné ou attaché
         if (playerStats == null)
         {
-            Debug.LogError("PlayerStats component is missing on the Player!");
+            playerStats = GetComponent<PlayerStats>();
+            if (playerStats == null)
+            {
+                Debug.LogError("PlayerStats component is missing! Disabling LevelUpSystem.");
+                enabled = false;
+                return;
+            }
+        }
+
+        // Ajoute un AudioSource si nécessaire
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
         }
     }
 
     private void Update()
     {
-        if (playerStats != null && playerStats.currentXP >= playerStats.requiredXP)
+        if (CanLevelUp())
         {
             LevelUp();
         }
+    }
+
+    private bool CanLevelUp()
+    {
+        return playerStats.currentXP >= playerStats.requiredXP;
     }
 
     private void LevelUp()
@@ -49,31 +69,40 @@ public class LevelUpSystem : MonoBehaviour
         playerStats.currentStamina = playerStats.maxStamina; // Restaure l'endurance
 
         // Affiche un effet visuel
-        if (levelUpEffect != null)
-        {
-            Instantiate(levelUpEffect, transform.position, Quaternion.identity);
-        }
+        PlayLevelUpEffect();
 
         // Joue un son
-        if (levelUpSound != null)
-        {
-            AudioSource.PlayClipAtPoint(levelUpSound, transform.position);
-        }
+        PlayLevelUpSound();
 
         // Met à jour l'interface utilisateur via PlayerStats
         playerStats.SaveStats();
         Debug.Log($"New Level: {playerStats.currentLevel}, XP for next level: {playerStats.requiredXP}");
     }
 
-    public void ResetLevel()
-{
-    playerStats.currentLevel = 1;
-    playerStats.requiredXP = xpRequiredToLevelUp;
-    playerStats.currentXP = 0;
-    playerStats.maxHealth = 100;
-    playerStats.maxStamina = 100;
-    playerStats.SaveStats();
-    Debug.Log("Le niveau et les stats ont été réinitialisés !");
-}
+    private void PlayLevelUpEffect()
+    {
+        if (levelUpEffect != null)
+        {
+            Instantiate(levelUpEffect, transform.position, Quaternion.identity);
+        }
+    }
 
+    private void PlayLevelUpSound()
+    {
+        if (levelUpSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(levelUpSound);
+        }
+    }
+
+    public void ResetLevel()
+    {
+        playerStats.currentLevel = 1;
+        playerStats.requiredXP = xpRequiredToLevelUp;
+        playerStats.currentXP = 0;
+        playerStats.maxHealth = 100;
+        playerStats.maxStamina = 100;
+        playerStats.SaveStats();
+        Debug.Log("Le niveau et les stats ont été réinitialisés !");
+    }
 }

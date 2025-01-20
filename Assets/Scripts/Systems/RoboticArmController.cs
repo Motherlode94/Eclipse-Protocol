@@ -1,55 +1,60 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using UnityEngine.InputSystem;
 
 public class RoboticArmController : MonoBehaviour
 {
     [Header("Joints Configuration")]
-    [SerializeField] private Transform baseJoint; // Base du bras
-    [SerializeField] private Transform arm1Joint; // Premier segment du bras
-    [SerializeField] private Transform arm2Joint; // Deuxième segment du bras
-    [SerializeField] private Transform clawJoint; // Pince ou extrémité
+    [SerializeField] private Transform baseJoint;
+    [SerializeField] private Transform arm1Joint;
+    [SerializeField] private Transform arm2Joint;
+    [SerializeField] private Transform clawJoint;
 
     [Header("Movement Settings")]
-    [SerializeField] private float rotationSpeed = 20f; // Vitesse de rotation des joints
-    [SerializeField] private float clawSpeed = 10f; // Vitesse de mouvement de la pince
+    [SerializeField] private float rotationSpeed = 20f;
+    [SerializeField] private float clawSpeed = 10f;
 
     [Header("Claw Settings")]
     [SerializeField] private Transform clawLeft;
     [SerializeField] private Transform clawRight;
-    [SerializeField] private float clawOpenDistance = 0.2f; // Distance d'ouverture de la pince
+    [SerializeField] private float clawOpenDistance = 0.2f;
+    [SerializeField] private float clawMovementSpeed = 0.05f;
+
+    [Header("Rotation Limits")]
+    [SerializeField] private Vector2 arm1RotationLimits = new Vector2(-45f, 45f); // Min/Max en degrés
+    [SerializeField] private Vector2 arm2RotationLimits = new Vector2(-30f, 30f);
 
     [Header("Player Settings")]
-    [SerializeField] private GameObject player; // Référence au joueur
-    [SerializeField] private PlayerController playerController; 
+    [SerializeField] private GameObject player;
+    [SerializeField] private PlayerController playerController;
 
-    private bool isClawOpen = true; // État actuel de la pince
-    private bool isControllingArm = false; // Indique si le joueur contrôle le bras
+    private bool isClawOpen = true;
+    private bool isControllingArm = false;
+    private float arm1CurrentRotation = 0f;
+    private float arm2CurrentRotation = 0f;
 
     private void Update()
     {
         if (isControllingArm)
         {
-        HandleBaseRotation();
-        HandleArmMovement();
-        HandleClawControl();
+            HandleBaseRotation();
+            HandleArmMovement();
+            HandleClawControl();
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 ExitControl();
             }
-
         }
     }
 
-        public void StartControl()
+    public void StartControl()
     {
         if (playerController != null)
         {
             Debug.Log("Player started controlling the robotic arm.");
-            playerController.enabled = false; // Désactive les contrôles du joueur
+            playerController.enabled = false;
         }
-
         isControllingArm = true;
     }
 
@@ -58,40 +63,48 @@ public class RoboticArmController : MonoBehaviour
         if (playerController != null)
         {
             Debug.Log("Player stopped controlling the robotic arm.");
-            playerController.enabled = true; // Réactive les contrôles du joueur
+            playerController.enabled = true;
         }
-
         isControllingArm = false;
     }
 
     private void HandleBaseRotation()
     {
-        // Rotation de la base avec les touches gauche/droite
-        float horizontalInput = Input.GetAxis("Horizontal"); // Mapping standard (A/D ou Flèches gauche/droite)
-        baseJoint.Rotate(Vector3.up, horizontalInput * rotationSpeed * Time.deltaTime);
+        float horizontalInput = Keyboard.current.leftArrowKey.isPressed ? -1 :
+                                Keyboard.current.rightArrowKey.isPressed ? 1 : 0;
+
+        if (horizontalInput != 0 && baseJoint != null)
+        {
+            baseJoint.Rotate(Vector3.up, horizontalInput * rotationSpeed * Time.deltaTime);
+        }
     }
 
     private void HandleArmMovement()
     {
-        // Rotation du premier segment du bras avec W/S
-        float verticalInput = Input.GetAxis("Vertical"); // Mapping standard (W/S ou Flèches haut/bas)
-        arm1Joint.Rotate(Vector3.right, verticalInput * rotationSpeed * Time.deltaTime);
+        float verticalInput = Keyboard.current.upArrowKey.isPressed ? 1 :
+                              Keyboard.current.downArrowKey.isPressed ? -1 : 0;
 
-        // Ajustement du deuxième segment avec Q/E
-        if (Input.GetKey(KeyCode.Q))
+        if (arm1Joint != null)
         {
-            arm2Joint.Rotate(Vector3.right, -rotationSpeed * Time.deltaTime);
+            arm1CurrentRotation += verticalInput * rotationSpeed * Time.deltaTime;
+            arm1CurrentRotation = Mathf.Clamp(arm1CurrentRotation, arm1RotationLimits.x, arm1RotationLimits.y);
+            arm1Joint.localRotation = Quaternion.Euler(arm1CurrentRotation, 0, 0);
         }
-        else if (Input.GetKey(KeyCode.E))
+
+        float arm2Input = Keyboard.current.qKey.isPressed ? -1 :
+                          Keyboard.current.eKey.isPressed ? 1 : 0;
+
+        if (arm2Joint != null)
         {
-            arm2Joint.Rotate(Vector3.right, rotationSpeed * Time.deltaTime);
+            arm2CurrentRotation += arm2Input * rotationSpeed * Time.deltaTime;
+            arm2CurrentRotation = Mathf.Clamp(arm2CurrentRotation, arm2RotationLimits.x, arm2RotationLimits.y);
+            arm2Joint.localRotation = Quaternion.Euler(arm2CurrentRotation, 0, 0);
         }
     }
 
     private void HandleClawControl()
     {
-        // Ouvrir/fermer la pince avec la barre d'espace
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             ToggleClaw();
         }
@@ -101,31 +114,36 @@ public class RoboticArmController : MonoBehaviour
     {
         if (isClawOpen)
         {
-            CloseClaw();
+            StartCoroutine(MoveClaw(Vector3.zero));
         }
         else
         {
-            OpenClaw();
+            Vector3 openPosition = new Vector3(-clawOpenDistance, 0, 0);
+            StartCoroutine(MoveClaw(openPosition));
         }
+
+        isClawOpen = !isClawOpen;
     }
 
-    private void OpenClaw()
+    private IEnumerator MoveClaw(Vector3 targetOffset)
     {
-        if (clawLeft != null && clawRight != null)
-        {
-            clawLeft.localPosition += Vector3.left * clawOpenDistance;
-            clawRight.localPosition += Vector3.right * clawOpenDistance;
-        }
-        isClawOpen = true;
-    }
+        float elapsedTime = 0f;
+        Vector3 clawLeftStart = clawLeft.localPosition;
+        Vector3 clawRightStart = clawRight.localPosition;
 
-    private void CloseClaw()
-    {
-        if (clawLeft != null && clawRight != null)
+        Vector3 clawLeftTarget = clawLeftStart + targetOffset;
+        Vector3 clawRightTarget = clawRightStart - targetOffset;
+
+        while (elapsedTime < 1f)
         {
-            clawLeft.localPosition -= Vector3.left * clawOpenDistance;
-            clawRight.localPosition -= Vector3.right * clawOpenDistance;
+            clawLeft.localPosition = Vector3.Lerp(clawLeftStart, clawLeftTarget, elapsedTime);
+            clawRight.localPosition = Vector3.Lerp(clawRightStart, clawRightTarget, elapsedTime);
+
+            elapsedTime += Time.deltaTime * clawMovementSpeed;
+            yield return null;
         }
-        isClawOpen = false;
+
+        clawLeft.localPosition = clawLeftTarget;
+        clawRight.localPosition = clawRightTarget;
     }
 }
