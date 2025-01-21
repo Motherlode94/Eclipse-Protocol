@@ -1,34 +1,36 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 
 public class DialogueSystem : MonoBehaviour
 {
     [Header("Dialogue UI")]
-    public GameObject dialoguePanel; // Panneau de dialogue principal
-    public TextMeshProUGUI dialogueText; // Texte principal du dialogue
-    public Button continueButton; // Bouton pour passer à la ligne suivante
-    public GameObject choicePanel; // Panneau pour afficher les choix
-    public Button[] choiceButtons; // Boutons pour les options de choix
+    public GameObject dialoguePanel;
+    public TextMeshProUGUI dialogueText;
+    public Button continueButton;
+    public GameObject choicePanel;
+    public Button[] choiceButtons;
 
-    private string[] dialogueLines; // Lignes du dialogue actuel
-    private int currentLineIndex = 0; // Index de la ligne de dialogue actuelle
-    private bool isChoiceActive = false; // Indique si un choix est actif
+    private string[] dialogueLines;
+    private int currentLineIndex = 0;
+    private bool isChoiceActive = false;
+    private System.Action<int> onChoiceSelected;
 
-    private System.Action<int> onChoiceSelected; // Action déclenchée lors de la sélection d'un choix
+    [Header("Typing Effect")]
+    public float typingSpeed = 0.05f; // Vitesse d'apparition du texte
+    private Coroutine typingCoroutine;
 
     private void Start()
     {
-        // Initialisation
         dialoguePanel.SetActive(false);
         choicePanel.SetActive(false);
         continueButton.onClick.AddListener(NextLine);
     }
 
     /// <summary>
-    /// Démarre un dialogue linéaire (sans choix).
+    /// Démarre un dialogue linéaire.
     /// </summary>
-    /// <param name="lines">Les lignes du dialogue à afficher.</param>
     public void StartDialogue(string[] lines)
     {
         if (lines == null || lines.Length == 0)
@@ -42,52 +44,23 @@ public class DialogueSystem : MonoBehaviour
         isChoiceActive = false;
 
         dialoguePanel.SetActive(true);
-        continueButton.gameObject.SetActive(true); // Affiche le bouton "Continuer"
-        choicePanel.SetActive(false); // Cache le panneau des choix
+        continueButton.gameObject.SetActive(true);
+        choicePanel.SetActive(false);
         ShowLine();
     }
 
     /// <summary>
-    /// Démarre un dialogue avec des choix.
-    /// </summary>
-    /// <param name="question">Question à afficher.</param>
-    /// <param name="choices">Liste des choix possibles.</param>
-    /// <param name="onChoice">Callback déclenché lors de la sélection d'un choix.</param>
-    public void StartChoiceDialogue(string question, string[] choices, System.Action<int> onChoice)
-    {
-        isChoiceActive = true;
-
-        dialogueText.text = question; // Affiche la question
-        choicePanel.SetActive(true); // Affiche le panneau des choix
-        continueButton.gameObject.SetActive(false); // Cache le bouton "Continuer"
-        onChoiceSelected = onChoice;
-
-        // Configure les boutons pour les choix
-        for (int i = 0; i < choiceButtons.Length; i++)
-        {
-            if (i < choices.Length)
-            {
-                choiceButtons[i].gameObject.SetActive(true);
-                choiceButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = choices[i];
-                int choiceIndex = i; // Capture locale pour éviter les problèmes de closure
-                choiceButtons[i].onClick.RemoveAllListeners();
-                choiceButtons[i].onClick.AddListener(() => SelectChoice(choiceIndex));
-            }
-            else
-            {
-                choiceButtons[i].gameObject.SetActive(false); // Désactive les boutons non nécessaires
-            }
-        }
-    }
-
-    /// <summary>
-    /// Affiche la ligne actuelle du dialogue.
+    /// Affiche une ligne avec un effet de "taper à la machine".
     /// </summary>
     private void ShowLine()
     {
         if (currentLineIndex < dialogueLines.Length)
         {
-            dialogueText.text = dialogueLines[currentLineIndex];
+            if (typingCoroutine != null)
+            {
+                StopCoroutine(typingCoroutine);
+            }
+            typingCoroutine = StartCoroutine(TypeLine(dialogueLines[currentLineIndex]));
         }
         else
         {
@@ -95,9 +68,16 @@ public class DialogueSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Passe à la ligne suivante dans le dialogue linéaire.
-    /// </summary>
+    private IEnumerator TypeLine(string line)
+    {
+        dialogueText.text = "";
+        foreach (char c in line.ToCharArray())
+        {
+            dialogueText.text += c;
+            yield return new WaitForSeconds(typingSpeed);
+        }
+    }
+
     private void NextLine()
     {
         if (!isChoiceActive)
@@ -108,8 +88,52 @@ public class DialogueSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Termine le dialogue linéaire.
+    /// Démarre un dialogue avec des choix.
     /// </summary>
+    public void StartChoiceDialogue(string question, string[] choices, System.Action<int> onChoice)
+    {
+        isChoiceActive = true;
+
+        if (typingCoroutine != null)
+        {
+            StopCoroutine(typingCoroutine);
+        }
+
+        dialogueText.text = question;
+        choicePanel.SetActive(true);
+        continueButton.gameObject.SetActive(false);
+        onChoiceSelected = onChoice;
+
+        for (int i = 0; i < choiceButtons.Length; i++)
+        {
+            if (i < choices.Length)
+            {
+                choiceButtons[i].gameObject.SetActive(true);
+                choiceButtons[i].GetComponentInChildren<TextMeshProUGUI>().text = choices[i];
+                int choiceIndex = i;
+                choiceButtons[i].onClick.RemoveAllListeners();
+                choiceButtons[i].onClick.AddListener(() => SelectChoice(choiceIndex));
+            }
+            else
+            {
+                choiceButtons[i].gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void SelectChoice(int choiceIndex)
+    {
+        onChoiceSelected?.Invoke(choiceIndex);
+        EndChoice();
+    }
+
+    private void EndChoice()
+    {
+        choicePanel.SetActive(false);
+        dialoguePanel.SetActive(false);
+        isChoiceActive = false;
+    }
+
     private void EndDialogue()
     {
         dialoguePanel.SetActive(false);
@@ -119,22 +143,21 @@ public class DialogueSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Gère la sélection d'un choix.
+    /// Sauvegarde l'état actuel du dialogue.
     /// </summary>
-    /// <param name="choiceIndex">Index du choix sélectionné.</param>
-    private void SelectChoice(int choiceIndex)
+    public void SaveDialogueState()
     {
-        onChoiceSelected?.Invoke(choiceIndex); // Exécute le callback avec l'index du choix
-        EndChoice();
+        PlayerPrefs.SetInt("DialogueLineIndex", currentLineIndex);
+        Debug.Log("État du dialogue sauvegardé !");
     }
 
     /// <summary>
-    /// Termine le mode de choix et cache les UI associées.
+    /// Charge l'état du dialogue depuis une sauvegarde.
     /// </summary>
-    private void EndChoice()
+    public void LoadDialogueState(string[] savedLines)
     {
-        choicePanel.SetActive(false);
-        dialoguePanel.SetActive(false);
-        isChoiceActive = false;
+        dialogueLines = savedLines;
+        currentLineIndex = PlayerPrefs.GetInt("DialogueLineIndex", 0);
+        StartDialogue(dialogueLines);
     }
 }

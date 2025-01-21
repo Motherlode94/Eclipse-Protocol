@@ -34,6 +34,12 @@ public class Zone : MonoBehaviour
 
     void UpdateZoneColor()
     {
+        if (zoneRenderer == null)
+        {
+            Debug.LogWarning("Renderer non trouvé sur la zone !");
+            return;
+        }
+
         switch (zoneType)
         {
             case ZoneType.Secure:
@@ -55,6 +61,10 @@ public class Zone : MonoBehaviour
             audioSource.clip = ambianceSonore;
             audioSource.loop = true;
             audioSource.Play();
+        }
+        else
+        {
+            audioSource.Stop();
         }
     }
 
@@ -83,5 +93,34 @@ public class Zone : MonoBehaviour
 
         Debug.Log(info);
         // Vous pouvez intégrer cette information dans l'UI du jeu ici.
+    }
+
+    public void ApplyWorldRules(string targetRules)
+    {
+        Debug.Log($"Application des règles reçues par le portail : {targetRules}");
+
+        // Exemple : modifier la zone en fonction des règles
+        if (targetRules == "HostileMode")
+        {
+            zoneType = ZoneType.Hostile;
+            UpdateZone();
+            Debug.Log("La zone est maintenant hostile !");
+        }
+        else if (targetRules == "NeutralMode")
+        {
+            zoneType = ZoneType.Neutral;
+            UpdateZone();
+            Debug.Log("La zone est maintenant neutre.");
+        }
+        else if (targetRules == "SecureMode")
+        {
+            zoneType = ZoneType.Secure;
+            UpdateZone();
+            Debug.Log("La zone est maintenant sécurisée.");
+        }
+        else
+        {
+            Debug.LogWarning("Aucune règle valide appliquée.");
+        }
     }
 }

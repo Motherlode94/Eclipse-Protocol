@@ -3,18 +3,24 @@ using UnityEngine.AI;
 
 public class CompanionAI : MonoBehaviour
 {
-    public enum CompanionState { Idle, Follow, Attack }
+    public enum CompanionState { Idle, Follow, Attack, Patrol }
     public CompanionState currentState = CompanionState.Idle;
 
     [Header("References")]
-    public Transform player; // La cible que le compagnon doit suivre
+    public Transform player; // Cible que le compagnon doit suivre
     public Animator animator; // Référence à l'Animator
-    public Transform attackTarget; // La cible actuelle d'attaque
+    public Transform attackTarget; // Cible actuelle d'attaque
 
     [Header("Settings")]
     public float followDistance = 5f; // Distance minimale pour suivre le joueur
     public float attackRange = 2f; // Distance pour attaquer une cible
     public float attackCooldown = 1.5f; // Temps entre les attaques
+    public float patrolRadius = 10f; // Rayon de patrouille
+
+    [Header("Effects")]
+    public ParticleSystem attackEffect; // Effet visuel lors de l'attaque
+    public AudioClip attackSound; // Son joué lors de l'attaque
+    private AudioSource audioSource;
 
     private NavMeshAgent agent;
     private float nextAttackTime;
@@ -22,6 +28,7 @@ public class CompanionAI : MonoBehaviour
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -43,12 +50,13 @@ public class CompanionAI : MonoBehaviour
             case CompanionState.Attack:
                 AttackBehavior();
                 break;
+
+            case CompanionState.Patrol:
+                PatrolBehavior();
+                break;
         }
     }
 
-    /// <summary>
-    /// Comportement lorsque le compagnon est en mode idle (ne fait rien).
-    /// </summary>
     private void IdleBehavior()
     {
         agent.ResetPath();
@@ -58,9 +66,6 @@ public class CompanionAI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Le compagnon suit le joueur lorsqu'il est trop éloigné.
-    /// </summary>
     private void FollowPlayer()
     {
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
@@ -83,14 +88,11 @@ public class CompanionAI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Comportement d'attaque lorsqu'une cible est assignée.
-    /// </summary>
     private void AttackBehavior()
     {
         if (attackTarget == null)
         {
-            currentState = CompanionState.Follow;
+            ReturnToFollow();
             return;
         }
 
@@ -110,25 +112,30 @@ public class CompanionAI : MonoBehaviour
             if (Time.time >= nextAttackTime)
             {
                 nextAttackTime = Time.time + attackCooldown;
-                AttackTarget();
+                PerformAttack();
             }
         }
     }
 
-    /// <summary>
-    /// Définit une cible pour attaquer.
-    /// </summary>
-    /// <param name="target">La cible à attaquer.</param>
-    public void AssignTarget(Transform target)
+    private void PatrolBehavior()
     {
-        attackTarget = target;
-        currentState = CompanionState.Attack;
+        if (!agent.hasPath)
+        {
+            Vector3 randomPoint = Random.insideUnitSphere * patrolRadius + transform.position;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomPoint, out hit, patrolRadius, NavMesh.AllAreas))
+            {
+                agent.SetDestination(hit.position);
+            }
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("isWalking", true);
+        }
     }
 
-    /// <summary>
-    /// Comportement d'attaque réel (animations, dégâts, etc.).
-    /// </summary>
-    private void AttackTarget()
+    private void PerformAttack()
     {
         Debug.Log("Compagnon attaque " + attackTarget.name);
 
@@ -137,45 +144,58 @@ public class CompanionAI : MonoBehaviour
             animator.SetTrigger("Attack");
         }
 
-        // Ajoutez ici la logique de dégâts si la cible a un script de santé
+        if (attackEffect != null)
+        {
+            attackEffect.Play();
+        }
+
+        if (audioSource != null && attackSound != null)
+        {
+            audioSource.PlayOneShot(attackSound);
+        }
+
         if (attackTarget.TryGetComponent(out IDamageable damageable))
         {
             damageable.TakeDamage(10); // Exemple : inflige 10 points de dégâts
         }
     }
 
-    /// <summary>
-    /// Reprend le mode de suivi après avoir attaqué ou lorsque la cible n'existe plus.
-    /// </summary>
+    public void AssignTarget(Transform target)
+    {
+        attackTarget = target;
+        currentState = CompanionState.Attack;
+    }
+
     public void ReturnToFollow()
     {
         attackTarget = null;
         currentState = CompanionState.Follow;
     }
 
-    /// <summary>
-    /// Définir l'état en attente.
-    /// </summary>
     public void SetIdle()
     {
         currentState = CompanionState.Idle;
     }
 
-    /// <summary>
-    /// Définir l'état de suivi.
-    /// </summary>
     public void SetFollow()
     {
         currentState = CompanionState.Follow;
     }
 
+    public void SetPatrol()
+    {
+        currentState = CompanionState.Patrol;
+    }
+
     private void OnDrawGizmosSelected()
     {
-        // Visualiser les rayons pour le suivi et l'attaque
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, followDistance);
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
+
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position, patrolRadius);
     }
 }

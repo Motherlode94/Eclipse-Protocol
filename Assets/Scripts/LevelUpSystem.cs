@@ -1,11 +1,10 @@
-using System.Collections;
 using UnityEngine;
 
 public class LevelUpSystem : MonoBehaviour
 {
     [Header("Level Up Settings")]
-    [SerializeField] private int xpRequiredToLevelUp = 100; // XP nécessaire pour monter de niveau
-    [SerializeField] private int levelUpXPIncrease = 50; // Augmentation du seuil d'XP à chaque niveau
+    [SerializeField] private int baseXPRequired = 100; // XP de base pour le niveau 1
+    [SerializeField] private float xpMultiplier = 1.5f; // Multiplicateur pour augmenter l'XP requis par niveau
     [SerializeField] private int healthBonusPerLevel = 10; // Bonus de santé max par niveau
     [SerializeField] private int staminaBonusPerLevel = 5; // Bonus d'endurance max par niveau
     [SerializeField] private GameObject levelUpEffect; // Effet visuel lors de la montée de niveau
@@ -18,7 +17,6 @@ public class LevelUpSystem : MonoBehaviour
 
     private void Start()
     {
-        // Vérifie si le composant PlayerStats est assigné ou attaché
         if (playerStats == null)
         {
             playerStats = GetComponent<PlayerStats>();
@@ -30,12 +28,10 @@ public class LevelUpSystem : MonoBehaviour
             }
         }
 
-        // Ajoute un AudioSource si nécessaire
-        audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-        }
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+
+        // Initialisation des XP requis pour le premier niveau
+        playerStats.requiredXP = baseXPRequired;
     }
 
     private void Update()
@@ -55,28 +51,27 @@ public class LevelUpSystem : MonoBehaviour
     {
         Debug.Log("Player leveled up!");
 
-        // Augmente le niveau du joueur
+        // Augmente le niveau
         playerStats.currentLevel++;
 
-        // Réinitialise l'XP et augmente le seuil requis pour le prochain niveau
+        // Réinitialise l'XP et calcule les XP requis pour le prochain niveau
         playerStats.currentXP -= playerStats.requiredXP;
-        playerStats.requiredXP += levelUpXPIncrease;
+        playerStats.requiredXP = Mathf.RoundToInt(baseXPRequired * Mathf.Pow(xpMultiplier, playerStats.currentLevel - 1));
 
-        // Ajoute les bonus de santé et d'endurance
+        // Ajoute les bonus
         playerStats.maxHealth += healthBonusPerLevel;
         playerStats.maxStamina += staminaBonusPerLevel;
         playerStats.currentHealth = playerStats.maxHealth; // Restaure la santé
         playerStats.currentStamina = playerStats.maxStamina; // Restaure l'endurance
 
-        // Affiche un effet visuel
+        // Déclenche les effets visuels et sonores
         PlayLevelUpEffect();
-
-        // Joue un son
         PlayLevelUpSound();
 
-        // Met à jour l'interface utilisateur via PlayerStats
+        // Sauvegarde les stats et notifie
         playerStats.SaveStats();
-        Debug.Log($"New Level: {playerStats.currentLevel}, XP for next level: {playerStats.requiredXP}");
+        Debug.Log($"Niveau actuel : {playerStats.currentLevel}, XP pour le prochain niveau : {playerStats.requiredXP}");
+        NotifyLevelUp();
     }
 
     private void PlayLevelUpEffect()
@@ -95,10 +90,17 @@ public class LevelUpSystem : MonoBehaviour
         }
     }
 
+    private void NotifyLevelUp()
+    {
+        // Exemple : Affiche un message de montée de niveau dans l'UI
+        Debug.Log("Nouvelle compétence débloquée !");
+        // Vous pouvez ajouter ici un système pour notifier les nouvelles compétences ou améliorations débloquées
+    }
+
     public void ResetLevel()
     {
         playerStats.currentLevel = 1;
-        playerStats.requiredXP = xpRequiredToLevelUp;
+        playerStats.requiredXP = baseXPRequired;
         playerStats.currentXP = 0;
         playerStats.maxHealth = 100;
         playerStats.maxStamina = 100;

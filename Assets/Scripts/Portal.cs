@@ -4,13 +4,13 @@ using UnityEngine;
 public class Portal : MonoBehaviour
 {
     [Header("Portal Settings")]
-    [Tooltip("Destination de téléportation (un autre portail)")]
+    [Tooltip("Destination de téléportation (un autre portail ou monde)")]
     [SerializeField] private Transform teleportDestination;
     [Tooltip("Effet visuel pour la téléportation")]
     [SerializeField] private GameObject teleportEffect;
     [Tooltip("Son joué pendant la téléportation")]
     [SerializeField] private AudioClip teleportSound;
-    [Tooltip("Délai avant que le joueur puisse utiliser le portail à nouveau")]
+    [Tooltip("Délai avant que l'entité puisse utiliser le portail à nouveau")]
     [SerializeField] private float teleportCooldown = 2f;
 
     private bool canTeleport = true; // Indique si la téléportation est possible
@@ -18,6 +18,12 @@ public class Portal : MonoBehaviour
 
     private Renderer portalRenderer; // Pour changer la couleur pendant le cooldown
     private Color originalColor;
+
+    [Header("World Management")]
+    [Tooltip("Référence au système de gestion des mondes (Zone.cs)")]
+    [SerializeField] private Zone currentZone;
+    [Tooltip("Règles spécifiques au monde cible")]
+    [SerializeField] private string targetWorldRules;
 
     private void Start()
     {
@@ -34,18 +40,24 @@ public class Portal : MonoBehaviour
         {
             originalColor = portalRenderer.material.color;
         }
+
+        // Vérifie si la destination est correctement configurée
+        if (teleportDestination == null || !teleportDestination.GetComponent<Collider>()?.isTrigger == true)
+        {
+            Debug.LogError("Destination non configurée ou mal configurée !");
+        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        // Vérifie si l'objet qui entre est le joueur
-        if (other.CompareTag("Player") && canTeleport)
+        // Vérifie si l'objet qui entre est le joueur ou un autre type autorisé (PNJ, objet, etc.)
+        if ((other.CompareTag("Player") || other.CompareTag("Ally") || other.CompareTag("Object")) && canTeleport)
         {
-            TeleportPlayer(other.gameObject);
+            TeleportEntity(other.gameObject);
         }
     }
 
-    private void TeleportPlayer(GameObject player)
+    private void TeleportEntity(GameObject entity)
     {
         if (teleportDestination == null)
         {
@@ -56,13 +68,19 @@ public class Portal : MonoBehaviour
         // Désactive temporairement la téléportation pour éviter les boucles infinies
         StartCoroutine(TeleportCooldown());
 
-        // Joue l'effet visuel au départ
-        PlayTeleportEffect(player.transform.position);
+        // Synchronise avec le système de gestion des mondes
+        if (currentZone != null)
+        {
+            currentZone.ApplyWorldRules(targetWorldRules);
+        }
 
-        // Téléporte le joueur avec position et rotation
-        player.transform.SetParent(null); // Détache l'objet de tout parent
-        player.transform.position = teleportDestination.position;
-        player.transform.rotation = teleportDestination.rotation; // Aligne la rotation sur le portail de destination
+        // Joue l'effet visuel au départ
+        PlayTeleportEffect(entity.transform.position);
+
+        // Téléporte l'entité avec position et rotation
+        entity.transform.SetParent(null); // Détache l'objet de tout parent
+        entity.transform.position = teleportDestination.position;
+        entity.transform.rotation = teleportDestination.rotation; // Aligne la rotation sur la destination
 
         // Joue l'effet visuel à l'arrivée
         PlayTeleportEffect(teleportDestination.position);
@@ -70,7 +88,7 @@ public class Portal : MonoBehaviour
         // Joue le son de téléportation
         PlayTeleportSound();
 
-        Debug.Log($"Player téléporté au portail de destination : {teleportDestination.name}");
+        Debug.Log($"{entity.name} téléporté au portail de destination : {teleportDestination.name}");
     }
 
     private void PlayTeleportEffect(Vector3 position)

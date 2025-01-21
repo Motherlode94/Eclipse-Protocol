@@ -5,18 +5,16 @@ using UnityEngine.Events;
 public class MissionManager : MonoBehaviour
 {
     [Header("Missions")]
-    [Tooltip("Liste des missions disponibles pour cette session.")]
     public List<Mission> missions = new List<Mission>();
-
-    private int currentMissionIndex = 0; // Indice de la mission actuelle
+    private int currentMissionIndex = 0;
 
     [Header("Events")]
-    public UnityEvent<Mission> OnMissionStarted; // Appelé lorsqu'une mission commence
-    public UnityEvent<Mission> OnMissionCompleted; // Appelé lorsqu'une mission se termine
+    public UnityEvent<Mission> OnMissionStarted;
+    public UnityEvent<Mission> OnMissionCompleted;
+    public UnityEvent<Mission> OnMissionFailed;
 
     private void Start()
     {
-        // Démarre la première mission si disponible
         if (missions.Count > 0)
         {
             StartMission(currentMissionIndex);
@@ -27,10 +25,6 @@ public class MissionManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Démarre une mission spécifique.
-    /// </summary>
-    /// <param name="index">Index de la mission dans la liste.</param>
     public void StartMission(int index)
     {
         if (index >= 0 && index < missions.Count)
@@ -52,54 +46,55 @@ public class MissionManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Termine une mission spécifique.
-    /// </summary>
-    /// <param name="index">Index de la mission dans la liste.</param>
+    public void CompleteObjective()
+    {
+        if (currentMissionIndex >= 0 && currentMissionIndex < missions.Count)
+        {
+            Mission mission = missions[currentMissionIndex];
+
+            if (mission.currentState == Mission.MissionState.InProgress)
+            {
+                mission.AdvanceObjective();
+
+                if (mission.isCompleted)
+                {
+                    CompleteMission(currentMissionIndex);
+                }
+            }
+        }
+    }
+
     public void CompleteMission(int index)
     {
         if (index >= 0 && index < missions.Count)
         {
             Mission mission = missions[index];
 
-            if (mission.isCompleted)
+            if (!mission.isCompleted)
             {
-                Debug.LogWarning($"Mission déjà complétée : {mission.missionName}");
-                return;
-            }
+                mission.CompleteMission();
+                OnMissionCompleted?.Invoke(mission);
 
-            mission.CompleteMission();
-            OnMissionCompleted?.Invoke(mission);
-
-            // Passe à la mission suivante
-            currentMissionIndex++;
-            if (currentMissionIndex < missions.Count)
-            {
-                StartMission(currentMissionIndex);
+                currentMissionIndex++;
+                if (currentMissionIndex < missions.Count)
+                {
+                    StartMission(currentMissionIndex);
+                }
+                else
+                {
+                    Debug.Log("Toutes les missions sont terminées !");
+                }
             }
-            else
-            {
-                Debug.Log("Toutes les missions sont terminées !");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("Index de mission invalide !");
         }
     }
 
-    /// <summary>
-    /// Réinitialise toutes les missions.
-    /// </summary>
-    public void ResetMissions()
+    public void SaveMissions()
     {
-        foreach (var mission in missions)
-        {
-            mission.currentState = Mission.MissionState.NotStarted;
-        }
+        Debug.Log("Sauvegarde des missions non implémentée.");
+    }
 
-        currentMissionIndex = 0;
-        Debug.Log("Toutes les missions ont été réinitialisées.");
-        StartMission(currentMissionIndex);
+    public void LoadMissions()
+    {
+        Debug.Log("Chargement des missions non implémenté.");
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,58 +6,62 @@ public class WeaponSystem : MonoBehaviour
 {
     [Header("Weapon Settings")]
     public GameObject equippedWeapon; // Arme actuellement équipée
-    public Transform weaponHolderR; // Position où l'arme est tenue (main droite)
-    public Transform weaponHolderL; // Position où l'arme est tenue (main gauche)
-    public Transform backHolder; // Position pour stocker une arme dans le dos
+    public Transform weaponHolderR, weaponHolderL, backHolder; // Supports pour les armes
+    public List<GameObject> weaponInventory = new List<GameObject>(); // Inventaire des armes
 
-    public Vector3 weaponOffsetR = Vector3.zero; // Décalage pour la main droite
-    public Vector3 weaponRotationR = Vector3.zero; // Rotation pour la main droite
-    public Vector3 weaponOffsetL = Vector3.zero; // Décalage pour la main gauche
-    public Vector3 weaponRotationL = Vector3.zero; // Rotation pour la main gauche
-    public Vector3 weaponOffsetBack = Vector3.zero; // Décalage pour le dos
-    public Vector3 weaponRotationBack = Vector3.zero; // Rotation pour le dos
+    [Header("Offsets")]
+    public Vector3 weaponOffsetR, weaponRotationR;
+    public Vector3 weaponOffsetL, weaponRotationL;
+    public Vector3 weaponOffsetBack, weaponRotationBack;
 
     private AudioSource audioSource;
+    private float nextFireTime = 0f; // Gestion du cooldown global
 
     private void Start()
     {
-        // Ajoute une AudioSource si elle n'existe pas
         audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
     }
 
     private void OnEnable()
     {
-        // Enregistre les actions d'entrée via PlayerInput
         var playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
             playerInput.actions["AttackPrimary"].performed += OnPrimaryAttack;
+            playerInput.actions["SwitchWeapon"].performed += OnSwitchWeapon; // Gestion de la bascule entre armes
         }
     }
 
     private void OnDisable()
     {
-        // Déconnecte les actions d'entrée
         var playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
             playerInput.actions["AttackPrimary"].performed -= OnPrimaryAttack;
+            playerInput.actions["SwitchWeapon"].performed -= OnSwitchWeapon;
         }
     }
 
-    /// <summary>
-    /// Gestion de l'attaque primaire
-    /// </summary>
     private void OnPrimaryAttack(InputAction.CallbackContext context)
     {
-        UseWeapon();
+        if (Time.time >= nextFireTime)
+        {
+            nextFireTime = Time.time + 0.5f; // Cooldown global (modifiable)
+            UseWeapon();
+        }
     }
 
-    /// <summary>
-    /// Équipe une arme dans une main ou sur le dos.
-    /// </summary>
-    /// <param name="newWeapon">L'arme à équiper</param>
-    /// <param name="holderType">Support d'équipement : "right", "left", ou "back"</param>
+    private void OnSwitchWeapon(InputAction.CallbackContext context)
+    {
+        if (weaponInventory.Count > 0)
+        {
+            // Passe à l'arme suivante dans l'inventaire
+            int currentIndex = weaponInventory.IndexOf(equippedWeapon);
+            int nextIndex = (currentIndex + 1) % weaponInventory.Count;
+            EquipWeapon(weaponInventory[nextIndex]);
+        }
+    }
+
     public void EquipWeapon(GameObject newWeapon, string holderType = "right")
     {
         Transform selectedHolder = GetWeaponHolder(holderType);
@@ -73,15 +78,17 @@ public class WeaponSystem : MonoBehaviour
             Destroy(selectedHolder.GetChild(0).gameObject);
         }
 
-        // Instancie et configure la nouvelle arme
         equippedWeapon = Instantiate(newWeapon, selectedHolder);
         ConfigureWeaponPosition(selectedHolder, holderType);
+
+        if (!weaponInventory.Contains(newWeapon))
+        {
+            weaponInventory.Add(newWeapon); // Ajoute à l'inventaire si ce n'est pas déjà fait
+        }
+
         Debug.Log($"Arme équipée dans {holderType} : {newWeapon.name}");
     }
 
-    /// <summary>
-    /// Utilise l'arme équipée (tir ou attaque).
-    /// </summary>
     private void UseWeapon()
     {
         if (equippedWeapon == null)
@@ -90,7 +97,6 @@ public class WeaponSystem : MonoBehaviour
             return;
         }
 
-        // Vérifie si l'arme est de type mêlée ou distance
         var meleeWeapon = equippedWeapon.GetComponent<IMeleeWeapon>();
         var rangedWeapon = equippedWeapon.GetComponent<IRangedWeapon>();
 
@@ -108,9 +114,6 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Retourne le Transform correspondant au support sélectionné.
-    /// </summary>
     private Transform GetWeaponHolder(string holderType)
     {
         return holderType.ToLower() switch
@@ -122,9 +125,6 @@ public class WeaponSystem : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// Configure la position et la rotation de l'arme équipée.
-    /// </summary>
     private void ConfigureWeaponPosition(Transform holder, string holderType)
     {
         Vector3 offset, rotation;
@@ -152,39 +152,4 @@ public class WeaponSystem : MonoBehaviour
         equippedWeapon.transform.localEulerAngles = rotation;
         equippedWeapon.transform.localScale = Vector3.one;
     }
-
-    /// <summary>
-    /// Déséquipe l'arme actuellement dans le support.
-    /// </summary>
-    /// <param name="holderType">Support à déséquiper : "right", "left", ou "back"</param>
-    public void UnequipWeapon(string holderType = "right")
-    {
-        Transform selectedHolder = GetWeaponHolder(holderType);
-
-        if (selectedHolder != null && selectedHolder.childCount > 0)
-        {
-            Destroy(selectedHolder.GetChild(0).gameObject);
-            Debug.Log($"Arme déséquipée de {holderType}");
-        }
-    }
 }
-
-#region Interfaces
-
-/// <summary>
-/// Interface pour les armes de mêlée.
-/// </summary>
-public interface IMeleeWeapon
-{
-    void Attack(); // Effectuer une attaque de mêlée
-}
-
-/// <summary>
-/// Interface pour les armes à distance.
-/// </summary>
-public interface IRangedWeapon
-{
-    void Fire(); // Effectuer un tir
-}
-
-#endregion
