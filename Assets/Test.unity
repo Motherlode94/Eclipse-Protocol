@@ -522,12 +522,12 @@ PrefabInstance:
     - target: {fileID: 545571321086838873, guid: d264878e78345324dbd3f78077905d9a,
         type: 3}
       propertyPath: m_UpdateMode
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 545571321086838873, guid: d264878e78345324dbd3f78077905d9a,
         type: 3}
       propertyPath: m_CullingMode
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3071833871565167867, guid: d264878e78345324dbd3f78077905d9a,
         type: 3}
@@ -600,11 +600,7 @@ PrefabInstance:
     - {fileID: 8586979186428741881, guid: d264878e78345324dbd3f78077905d9a, type: 3}
     - {fileID: 845422932172110639, guid: d264878e78345324dbd3f78077905d9a, type: 3}
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 3071833871565167867, guid: d264878e78345324dbd3f78077905d9a,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 961739753}
+    m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6452452419427441537, guid: d264878e78345324dbd3f78077905d9a,
         type: 3}
@@ -783,11 +779,11 @@ Transform:
   m_GameObject: {fileID: 961739749}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.618266, y: 1, z: -24.85688}
+  m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 257563547}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &961739754
 MonoBehaviour:
@@ -1794,3 +1790,4 @@ SceneRoots:
   - {fileID: 706213511}
   - {fileID: 1826264974}
   - {fileID: 1828389245}
+  - {fileID: 961739753}
