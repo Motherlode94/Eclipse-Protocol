@@ -5,45 +5,57 @@ using UnityEngine;
 public class BuildingGenerator : MonoBehaviour
 {
     [Header("Building Elements")]
-    public GameObject[] blocks; // Blocs de base (fondations, étages)
-    public GameObject[] walls; // Murs avec ou sans fenêtres
-    public GameObject[] windows; // Fenêtres
-    public GameObject[] doors; // Portes
-    public GameObject[] roofs; // Toits
-    public GameObject[] balconies; // Balcons
-    public GameObject[] stairs; // Escaliers
+    public GameObject[] backgroundBuilding;
+    public GameObject[] ceiling_Trim;
+    public GameObject[] floor;
+    public GameObject[] railing;
+    public GameObject[] railing_Pillar;
+    public GameObject[] railing_Rail;
+    public GameObject[] railing_railStairs;
+    public GameObject[] railing_railStraight;
+
+    public GameObject[] blocks;
+    public GameObject[] walls;
+    public GameObject[] windows;
+    public GameObject[] doors;
+    public GameObject[] roofs;
+    public GameObject[] balconies;
+    public GameObject[] stairs;
+    public GameObject[] corners; // Coins pour les bords
 
     [Header("Building Settings")]
-    public int width = 5; // Largeur du bâtiment (en blocs)
-    public int height = 3; // Hauteur du bâtiment (en étages)
-    public float blockSize = 2f; // Taille d'un bloc (par défaut à 2x2)
-    public int doorChance = 30; // Probabilité d'ajouter une porte (%)
-    public int balconyChance = 20; // Probabilité d'ajouter un balcon (%)
+    public int width = 5;
+    public int height = 3;
+    public float blockSize = 2f;
+    public int doorChance = 30;
+    public int balconyChance = 20;
 
-    [Header("Biomes Settings")]
-    public bool enableBiomes = false;
-    public Color buildingColor; // Couleur pour le biome actuel (appliquée aux matériaux)
+    [Header("Biome Settings")]
+    public bool enableBiomes = false; // Active/désactive les biomes
+    public Color buildingColor = Color.white; // Couleur par défaut
+
+    [Header("Debug Settings")]
+    public bool previewMode = false; // Mode prévisualisation
 
     [Header("Parent Object")]
-    public Transform buildingParent; // Parent pour organiser les éléments du bâtiment
+    public Transform buildingParent;
 
     private void Start()
     {
-        GenerateBuilding();
+        if (!previewMode)
+        {
+            GenerateBuilding();
+        }
     }
 
     public void GenerateBuilding()
     {
-        // Générer chaque étage du bâtiment
         for (int y = 0; y < height; y++)
         {
             GenerateFloor(y);
         }
-
-        // Ajouter un toit au sommet
         GenerateRoof();
 
-        // Appliquer des paramètres spécifiques aux biomes si activés
         if (enableBiomes)
         {
             ApplyBiomeSettings();
@@ -57,14 +69,15 @@ public class BuildingGenerator : MonoBehaviour
             for (int z = 0; z < width; z++)
             {
                 Vector3 position = new Vector3(x * blockSize, floorLevel * blockSize, z * blockSize);
-
-                // Détermine si c'est un mur extérieur ou une partie interne
                 bool isEdge = (x == 0 || x == width - 1 || z == 0 || z == width - 1);
 
-                // Place un mur, une fenêtre, une porte ou un bloc en fonction de l'emplacement
                 if (isEdge)
                 {
-                    if (floorLevel == 0 && Random.Range(0, 100) < doorChance && (x == 0 || x == width - 1 || z == 0 || z == width - 1))
+                    if (x == 0 && z == 0 || x == width - 1 && z == 0 || x == 0 && z == width - 1 || x == width - 1 && z == width - 1)
+                    {
+                        PlaceCorner(position); // Placer un coin
+                    }
+                    else if (floorLevel == 0 && Random.Range(0, 100) < doorChance)
                     {
                         PlaceDoor(position);
                     }
@@ -73,7 +86,6 @@ public class BuildingGenerator : MonoBehaviour
                         PlaceWallOrWindow(position);
                     }
 
-                    // Ajoute éventuellement un balcon au-dessus du mur
                     if (Random.Range(0, 100) < balconyChance && floorLevel > 0)
                     {
                         PlaceBalcony(position);
@@ -83,10 +95,12 @@ public class BuildingGenerator : MonoBehaviour
                 {
                     PlaceBlock(position);
                 }
+
+                // Ajoute un sol sur chaque position
+                PlaceFloor(position, floorLevel);
             }
         }
 
-        // Ajouter des escaliers reliant les étages
         if (floorLevel < height - 1)
         {
             PlaceStairs(floorLevel);
@@ -101,7 +115,16 @@ public class BuildingGenerator : MonoBehaviour
             {
                 Vector3 position = new Vector3(x * blockSize, height * blockSize, z * blockSize);
 
-                // Place un toit
+                // Place un toit ou une garniture de plafond
+                if (roofs.Length > 0 && (x == 0 || z == 0 || x == width - 1 || z == width - 1))
+                {
+                    GameObject ceilingTrim = GetRandomElement(ceiling_Trim);
+                    if (ceilingTrim != null)
+                    {
+                        Instantiate(ceilingTrim, position, Quaternion.identity, buildingParent);
+                    }
+                }
+
                 if (roofs.Length > 0)
                 {
                     GameObject roof = roofs[Random.Range(0, roofs.Length)];
@@ -111,9 +134,20 @@ public class BuildingGenerator : MonoBehaviour
         }
     }
 
+    private void PlaceFloor(Vector3 position, int floorLevel)
+    {
+        if (floor.Length > 0)
+        {
+            GameObject floorElement = GetRandomElement(floor);
+            if (floorElement != null)
+            {
+                Instantiate(floorElement, position, Quaternion.identity, buildingParent);
+            }
+        }
+    }
+
     private void PlaceWallOrWindow(Vector3 position)
     {
-        // Aléatoirement place un mur ou une fenêtre
         GameObject element = Random.Range(0, 2) == 0 ? GetRandomElement(walls) : GetRandomElement(windows);
         if (element != null)
         {
@@ -136,6 +170,15 @@ public class BuildingGenerator : MonoBehaviour
         if (block != null)
         {
             Instantiate(block, position, Quaternion.identity, buildingParent);
+        }
+    }
+
+    private void PlaceCorner(Vector3 position)
+    {
+        GameObject corner = GetRandomElement(corners);
+        if (corner != null)
+        {
+            Instantiate(corner, position, Quaternion.identity, buildingParent);
         }
     }
 

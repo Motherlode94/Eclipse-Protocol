@@ -84,11 +84,12 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private void OnDisable() => controls.Disable();
 
     private bool IsGrounded()
-{
-    // Raycast pour vérifier si le joueur est proche du sol
-    Vector3 groundCheck = transform.position + Vector3.down * groundYOffset;
-    return Physics.CheckSphere(groundCheck, 0.2f, groundMask);
-}
+    {
+            Vector3 groundCheck = transform.position + Vector3.down * (characterController.height / 2 + groundYOffset);
+    bool grounded = Physics.CheckSphere(groundCheck, 0.2f, groundMask);
+    Debug.Log($"IsGrounded: {grounded}");
+    return grounded;
+    }
 
     public void OnAim(InputAction.CallbackContext context)
     {
@@ -113,11 +114,31 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         lookInput = context.ReadValue<Vector2>();
     }
 
+    public void OnLookHorizontal(InputAction.CallbackContext context)
+{
+    if (context.performed)
+    {
+        float horizontalInput = context.ReadValue<float>();
+        lookInput.x = horizontalInput; // Appliquer à l'axe X de la caméra
+    }
+}
+
+    public void OnZoom(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            float zoomValue = context.ReadValue<float>();
+            // Ajoutez ici la logique de zoom (par exemple, ajuster la caméra)
+            Debug.Log($"Zoom input received: {zoomValue}");
+        }
+    }
+
+
     public void OnJump(InputAction.CallbackContext context)
     {
-        jumpInput = context.performed;
+            Debug.Log($"Jump Input Detected: {jumpInput}");
 
-            if (jumpVFX != null)
+    if (jumpVFX != null)
     {
         if (jumpInput)
         {
@@ -277,8 +298,8 @@ private void HandleLayerSwitching()
     }
 
     private void HandleGravityAndJump()
-    {
-            if (IsGrounded())
+{
+    if (IsGrounded())
     {
         velocity.y = -2f; // Empêche l'accumulation de gravité
         currentJumpCount = 0; // Réinitialise le compteur de sauts
@@ -286,37 +307,44 @@ private void HandleLayerSwitching()
         if (jumpInput)
         {
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity); // Calcul de la force de saut
-            currentJumpCount++;
+            currentJumpCount++; // Incrémente le compteur de sauts
             jumpInput = false; // Réinitialise l'entrée de saut
 
-            // Joue le VFX et l'animation
-            if (jumpVFX != null) jumpVFX.Play();
-            if (animator != null) animator.SetTrigger("Jump");
+            // Joue les VFX et l'animation
+            jumpVFX?.Play();
+            animator?.SetTrigger("Jump");
         }
 
         // Réinitialise les paramètres d'animation au sol
-        animator.SetBool("isFalling", false);
-        animator.SetBool("isLanding", true);
+        animator?.SetBool("isFalling", false);
+        animator?.SetBool("isLanding", true);
     }
     else
     {
-        // Applique la gravité en l'air
+        // Permet un double saut
+        if (jumpInput && currentJumpCount < 2)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity); // Calcul de la force du double saut
+            currentJumpCount++; // Incrémente le compteur de sauts
+            jumpInput = false; // Réinitialise l'entrée de saut
+
+            // Joue les VFX et l'animation pour le double saut
+            jumpVFX?.Play();
+            animator?.SetTrigger("Jump");
+            Debug.Log("Double jump executed");
+        }
+
+        // Applique la gravité si le joueur est en l'air
         velocity.y += gravity * Time.deltaTime;
 
-        // Gère les états de saut et de chute
-        animator.SetBool("isFalling", velocity.y < 0);
-        animator.SetBool("isLanding", false);
-
-        // Empêche le double saut
-        if (currentJumpCount >= 1)
-        {
-            jumpInput = false;
-        }
+        // Gestion des états de saut et de chute
+        animator?.SetBool("isFalling", velocity.y < 0);
+        animator?.SetBool("isLanding", false);
     }
 
     // Applique le mouvement vertical
     characterController.Move(velocity * Time.deltaTime);
-    }
+}
 
     private void HandleCamera()
     {

@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.InputSystem; // Nouvelle méthode d'Input System
 
 public class ThirdPersonCamera : MonoBehaviour
 {
@@ -16,14 +16,30 @@ public class ThirdPersonCamera : MonoBehaviour
     private float currentZoom = 5f;
     private float yawInput = 0f;
 
+    private PlayerInput playerInput; // Référence au Player Input
+    private InputAction mouseXAction; // Mouvement horizontal de la souris
+    private InputAction mouseYAction; // Mouvement vertical de la souris
+    private InputAction mouseScrollAction; // Molette de la souris
+
+    private void Awake()
+    {
+        playerInput = GetComponent<PlayerInput>();
+
+        // Actions de la souris
+        mouseXAction = playerInput.actions["MouseX"];
+        mouseYAction = playerInput.actions["MouseY"];
+        mouseScrollAction = playerInput.actions["MouseScroll"];
+    }
+
     private void Update()
     {
         // Gestion du zoom avec la molette de la souris
-        currentZoom -= Input.GetAxis("Mouse ScrollWheel") * zoomSpeed;
+        float scrollInput = mouseScrollAction.ReadValue<float>();
+        currentZoom -= scrollInput * zoomSpeed;
         currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
 
         // Rotation horizontale avec la souris
-        yawInput += Input.GetAxis("Mouse X") * rotationSpeed;
+        yawInput += mouseXAction.ReadValue<float>() * rotationSpeed;
     }
 
     private void LateUpdate()
@@ -37,4 +53,3 @@ public class ThirdPersonCamera : MonoBehaviour
         transform.RotateAround(target.position, Vector3.up, yawInput);
     }
 }
-
