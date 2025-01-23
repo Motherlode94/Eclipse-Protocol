@@ -325,6 +325,12 @@ MonoBehaviour:
   aimOffset: {x: 0, y: 1.5, z: -2}
   minVerticalAngle: -60
   maxVerticalAngle: 60
+  offset: {x: 0, y: 1.5, z: -3}
+  rotationSpeed: 5
+  zoomSpeed: 2
+  minZoom: 2
+  maxZoom: 10
+  target: {fileID: 0}
   sprintVFX: {fileID: 0}
   jumpVFX: {fileID: 0}
   inventoryPanel: {fileID: 0}
@@ -799,10 +805,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   target: {fileID: 257563547}
   offset: {x: 0, y: 1.5, z: -3}
-  rotationSpeed: 5
+  distance: 3
   zoomSpeed: 2
-  minZoom: 2
-  maxZoom: 10
+  minDistance: 2
+  maxDistance: 10
+  rotationSpeed: 5
+  pitchMin: -20
+  pitchMax: 60
 --- !u!114 &1093468149 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1164404442912096093, guid: de133d47fd31b254288e738966a197d3,

@@ -16,23 +16,9 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     public float groundYOffset = 0.1f;
     public LayerMask groundMask;
 
-    [Header("Camera Settings")]
+    [Header("Camera Reference (pour le mouvement)")]
+    // On garde la référence à la caméra uniquement pour avoir sa direction avant/droite
     public Transform cameraTransform;
-    public float cameraSensitivity = 1f;
-    public float aimFOV = 40f;
-    public float normalFOV = 60f;
-    public float aimSmoothSpeed = 10f;
-    public Vector3 aimOffset = new Vector3(0, 1.5f, -2f);
-    public float minVerticalAngle = -60f;
-    public float maxVerticalAngle = 60f;
-    public Vector3 offset = new Vector3(0, 1.5f, -3f);
-    public float rotationSpeed = 5f;
-    public float zoomSpeed = 2f;
-    public float minZoom = 2f;
-    public float maxZoom = 10f;
-
-    [Header("Target Settings")]
-    public Transform target;
 
     [Header("VFX Settings")]
     public ParticleSystem sprintVFX;
@@ -41,34 +27,36 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     [Header("Inventory Settings")]
     public GameObject inventoryPanel;
 
-    private float currentZoom = 5f;
-    private float yawInput = 0f;
     private CharacterController characterController;
     private StateManager stateManager;
     private Animator animator;
     private Vector3 velocity;
     private Vector2 movementInput;
-    private Vector2 lookInput;
+    private Vector2 lookInput; // <-- Déclaration de la variable manquante
     private EclipseProtocol controls;
-    private Vector3 cameraOffset;
-    private float verticalAngle = 0f;
-    private bool isRunning, isSprinting, isCrouching, jumpInput;
+    private bool jumpInput;
+    private bool isRunning, isSprinting, isCrouching;
     private bool isRolling = false;
     private bool isAiming = false;
     private InventoryManager inventoryManager;
     private PlayerStats playerStats;
     private BoostItem nearbyBoostItem;
     private UIManager uiManager;
-    private InputAction mouseXAction;
-    private InputAction mouseYAction;
-    private InputAction mouseScrollAction;
+    private PlayerInput playerInput; // Défini dans votre description
+    private int currentJumpCount = 0; // Idem
 
-    private PlayerInput playerInput; // Définition manquante ajoutée
-    private int currentJumpCount = 0; // Définition manquante ajoutée
+    // Pour déterminer si on est au sol
+    private bool IsGrounded()
+    {
+        Vector3 groundCheck = transform.position
+            + Vector3.down * (characterController.height / 2 + groundYOffset);
+        bool grounded = Physics.CheckSphere(groundCheck, 0.2f, groundMask);
+        return grounded;
+    }
 
     private void Awake()
     {
-                // Initialize state manager
+        // Initialize state manager
         stateManager = new StateManager();
 
         // Get required components
@@ -90,26 +78,6 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         // Initialize controls
         controls = new EclipseProtocol();
         InitializeInputActions();
-
-        // Camera setup
-        if (cameraTransform == null)
-        {
-            Debug.LogWarning("CameraTransform is not assigned. Using Camera.main.");
-            cameraTransform = Camera.main?.transform;
-            if (cameraTransform == null)
-                Debug.LogError("Main Camera is missing!");
-        }
-
-        // Target setup
-        if (target == null)
-        {
-            Debug.LogWarning("Target is not assigned. Using self transform.");
-            target = transform;
-        }
-
-        // Calculate camera offset
-        if (cameraTransform != null)
-            cameraOffset = cameraTransform.position - transform.position;
     }
 
     private void OnEnable()
@@ -124,11 +92,6 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 
     private void InitializeInputActions()
     {
-        mouseXAction = controls.Player.MouseX;
-        mouseYAction = controls.Player.MouseY;
-        mouseScrollAction = controls.Player.MouseScroll;
-
-        controls.Player.Look.performed += ctx => OnLook(ctx);
         controls.Player.Move.performed += ctx => OnMove(ctx);
         controls.Player.Move.canceled += ctx => OnMove(ctx);
         controls.Player.Jump.performed += ctx => OnJump(ctx);
@@ -140,75 +103,40 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         controls.Player.Sprint.performed += ctx => OnSprint(ctx);
         controls.Player.Sprint.canceled += ctx => OnSprint(ctx);
         controls.Player.Inventory.performed += OnInventory;
+
+        // Pour la visée et le Look
         controls.Player.Aim.performed += ctx => OnAim(ctx);
         controls.Player.Aim.canceled += ctx => OnAim(ctx);
+        controls.Player.Look.performed += ctx => OnLook(ctx);
+        controls.Player.Look.canceled += ctx => OnLook(ctx);
     }
 
-    private bool IsGrounded()
+    // --------- Méthodes d'Input obligatoires pour IPlayerActions --------- //
+    // (Seules celles effectivement appelées dans InitializeInputActions sont utiles.)
+    public void OnLook(InputAction.CallbackContext context)
     {
-        Vector3 groundCheck = transform.position + Vector3.down * (characterController.height / 2 + groundYOffset);
-        bool grounded = Physics.CheckSphere(groundCheck, 0.2f, groundMask);
-        return grounded;
-    }
+        // On récupère le mouvement de la souris ou du stick droit (nouveau Input System)
+        Vector2 rawInput = context.ReadValue<Vector2>();
 
+        // Appliquer un seuil pour éviter le bruit
+        const float threshold = 0.05f;
+        lookInput = rawInput.magnitude > threshold ? rawInput : Vector2.zero;
+    }
 
     public void OnInteract(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnInteract
-    if (context.performed)
     {
-        Debug.Log("Interact action triggered.");
-        // Ajouter ici la logique d'interaction
+        if (context.performed)
+        {
+            Debug.Log("Interact action triggered.");
+            // Logique d’interaction
+        }
     }
-}
-
-public void OnLookHorizontal(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnLookHorizontal
-    if (context.performed)
-    {
-        Debug.Log($"Horizontal Look: {context.ReadValue<float>()}");
-        // Ajouter ici la logique pour la rotation horizontale
-    }
-}
-
-public void OnZoom(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnZoom
-    if (context.performed)
-    {
-        Debug.Log($"Zoom: {context.ReadValue<float>()}");
-        // Ajouter ici la logique pour gérer le zoom
-    }
-}
-
-public void OnMouseX(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnMouseX
-    if (context.performed)
-    {
-        Debug.Log($"Mouse X Movement: {context.ReadValue<float>()}");
-    }
-}
-
-public void OnMouseY(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnMouseY
-    if (context.performed)
-    {
-        Debug.Log($"Mouse Y Movement: {context.ReadValue<float>()}");
-    }
-}
-
-public void OnMouseScroll(InputAction.CallbackContext context)
-{
-    // Implémentation de l'action OnMouseScroll
-    if (context.performed)
-    {
-        Debug.Log($"Mouse Scroll: {context.ReadValue<float>()}");
-    }
-}
-
+    public void OnLookHorizontal(InputAction.CallbackContext context) { }
+    public void OnZoom(InputAction.CallbackContext context) { }
+    public void OnMouseX(InputAction.CallbackContext context) { }
+    public void OnMouseY(InputAction.CallbackContext context) { }
+    public void OnMouseScroll(InputAction.CallbackContext context) { }
+    // --------------------------------------------------------------------- //
 
     public void OnAim(InputAction.CallbackContext context)
     {
@@ -218,15 +146,6 @@ public void OnMouseScroll(InputAction.CallbackContext context)
     public void OnMove(InputAction.CallbackContext context)
     {
         movementInput = context.performed ? context.ReadValue<Vector2>() : Vector2.zero;
-    }
-
-    public void OnLook(InputAction.CallbackContext context)
-    {
-            Vector2 rawInput = context.ReadValue<Vector2>();
-
-    // Appliquer un seuil pour éviter le bruit
-    const float threshold = 0.05f;
-    lookInput = rawInput.magnitude > threshold ? rawInput : Vector2.zero;
     }
 
     public void OnJump(InputAction.CallbackContext context)
@@ -239,10 +158,8 @@ public void OnMouseScroll(InputAction.CallbackContext context)
         isSprinting = context.performed;
         if (sprintVFX != null)
         {
-            if (isSprinting)
-                sprintVFX.Play();
-            else
-                sprintVFX.Stop();
+            if (isSprinting) sprintVFX.Play();
+            else sprintVFX.Stop();
         }
     }
 
@@ -269,7 +186,10 @@ public void OnMouseScroll(InputAction.CallbackContext context)
             {
                 isRolling = true;
                 animator?.SetTrigger("isRolling");
+
+                // Déplacement instantané sur cette frame
                 characterController.Move(rollDirection.normalized * rollSpeed * Time.deltaTime);
+
                 isRolling = false;
             }
         }
@@ -278,7 +198,10 @@ public void OnMouseScroll(InputAction.CallbackContext context)
     public void OnFire(InputAction.CallbackContext context)
     {
         if (context.performed)
+        {
             Debug.Log("Fire action triggered");
+            // Logique de tir
+        }
     }
 
     public void OnInventory(InputAction.CallbackContext context)
@@ -300,41 +223,91 @@ public void OnMouseScroll(InputAction.CallbackContext context)
 
     private void Update()
     {
-            HandleMovement();
-    HandleGravityAndJump();
-    HandleCamera();
-    HandleStamina();
-    HandleAnimations();
+        HandleMovement();
+        HandleGravityAndJump();
+        HandleStamina();
+        HandleAnimations();
 
-    if (nearbyBoostItem != null && Keyboard.current.eKey.wasPressedThisFrame)
+        // Exemple d'interaction : appuyer sur E pour interagir
+        if (nearbyBoostItem != null && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            InteractWithBoostItem();
+        }
+    }
+
+    void HandleMovement()
     {
-        InteractWithBoostItem();
+        // On utilise la caméra pour orienter le déplacement
+        if (cameraTransform != null && movementInput.magnitude > 0.1f)
+        {
+            // Direction avant/arrière = forward de la cam, gauche/droite = right de la cam
+            Vector3 camForward = cameraTransform.forward; 
+            Vector3 camRight   = cameraTransform.right;
+
+            // On ignore la composante verticale (pour éviter de pencher le joueur)
+            camForward.y = 0f;
+            camRight.y   = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            // Calcul direction de déplacement
+            Vector3 moveDirection = camForward * movementInput.y + camRight * movementInput.x;
+            moveDirection.Normalize();
+
+            // On pivote le joueur dans la direction de déplacement
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+
+            // On détermine la vitesse (marche, course ou sprint)
+            float currentSpeed = stateManager.GetCurrentSpeed(walkSpeed, runSpeed, sprintSpeed);
+
+            // On applique le déplacement
+            characterController.Move(moveDirection * currentSpeed * Time.deltaTime);
+        }
     }
 
-    // Rotation horizontale uniquement si la souris bouge significativement
-    float mouseX = mouseXAction.ReadValue<float>();
-    if (Mathf.Abs(mouseX) > 0.01f) // Seuil pour éviter les erreurs de mouvement minimal
+    void HandleGravityAndJump()
     {
-        yawInput += mouseX * rotationSpeed * Time.deltaTime;
-    }
+        if (IsGrounded())
+        {
+            velocity.y = -2f; // Petite force vers le sol
+            currentJumpCount = 0;
 
-    // Gestion du zoom
-    float scrollInput = mouseScrollAction.ReadValue<float>();
-    currentZoom = Mathf.Clamp(currentZoom - scrollInput * zoomSpeed, minZoom, maxZoom);
-    }
-    }
+            if (jumpInput)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                currentJumpCount++;
+                jumpInput = false;
 
-    private void LateUpdate()
-    {
-            // Mise à jour de la position de la caméra
-    Vector3 desiredPosition = target.position + offset * currentZoom;
-    cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, Time.deltaTime * aimSmoothSpeed);
+                jumpVFX?.Play();
+                animator?.SetTrigger("Jump");
+            }
 
-    // Appliquer la rotation horizontale au joueur
-    transform.rotation = Quaternion.Euler(0f, yawInput, 0f);
+            animator?.SetBool("isFalling", false);
+            animator?.SetBool("isLanding", true);
+        }
+        else
+        {
+            // Double-saut possible
+            if (jumpInput && currentJumpCount < 2)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                currentJumpCount++;
+                jumpInput = false;
 
-    // Rotation verticale de la caméra
-    cameraTransform.LookAt(target.position + Vector3.up * 1.5f); // Ajustez la hauteur si nécessaire
+                jumpVFX?.Play();
+                animator?.SetTrigger("Jump");
+            }
+
+            // Accélération vers le bas
+            velocity.y += gravity * Time.deltaTime;
+
+            animator?.SetBool("isFalling", velocity.y < 0);
+            animator?.SetBool("isLanding", false);
+        }
+
+        // On applique la velocity verticale
+        characterController.Move(velocity * Time.deltaTime);
     }
 
     void HandleStamina()
@@ -353,125 +326,41 @@ public void OnMouseScroll(InputAction.CallbackContext context)
         }
     }
 
-    void HandleMovement()
+    void HandleAnimations()
     {
-            if (movementInput.magnitude > 0.1f)
-    {
-        // Calculer la direction du mouvement par rapport à la caméra
-        Vector3 moveDirection = cameraTransform.forward * movementInput.y + cameraTransform.right * movementInput.x;
-        moveDirection.y = 0f; // Ignorer le mouvement vertical
-        moveDirection.Normalize();
+        if (animator == null) return;
 
-        // Effectuer la rotation du joueur uniquement dans la direction du mouvement
-        Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+        // Normaliser l'input si on veut X/Y dans [-1,1]
+        Vector2 normalizedInput = (movementInput.magnitude > 0.1f) ? movementInput.normalized : Vector2.zero;
+        animator.SetFloat("PosX", normalizedInput.x);
+        animator.SetFloat("PosY", normalizedInput.y);
 
-        // Appliquer la vitesse et déplacer le joueur
-        float currentSpeed = stateManager.GetCurrentSpeed(walkSpeed, runSpeed, sprintSpeed);
-        characterController.Move(moveDirection * currentSpeed * Time.deltaTime);
-    }
-
-    void HandleGravityAndJump()
-    {
+        // Sol vs. Air
         if (IsGrounded())
         {
-            velocity.y = -2f;
-            currentJumpCount = 0;
-
-            if (jumpInput)
+            animator.SetBool("isJumping", false);
+            animator.SetBool("isFalling", false);
+            if (animator.GetBool("isLanding"))
             {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-                currentJumpCount++;
-                jumpInput = false;
-
-                jumpVFX?.Play();
-                animator?.SetTrigger("Jump");
+                animator.SetBool("isLanding", false);
             }
-
-            animator?.SetBool("isFalling", false);
-            animator?.SetBool("isLanding", true);
         }
         else
         {
-            if (jumpInput && currentJumpCount < 2)
+            animator.SetBool("isJumping", velocity.y > 0);
+            animator.SetBool("isFalling", velocity.y < 0);
+
+            if (velocity.y <= 0)
             {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-                currentJumpCount++;
-                jumpInput = false;
-
-                jumpVFX?.Play();
-                animator?.SetTrigger("Jump");
+                animator.SetBool("isLanding", true);
             }
-
-            velocity.y += gravity * Time.deltaTime;
-
-            animator?.SetBool("isFalling", velocity.y < 0);
-            animator?.SetBool("isLanding", false);
         }
 
-        characterController.Move(velocity * Time.deltaTime);
-    }
-
-    void HandleCamera()
-    {
-            // Vérification que l'entrée lookInput est significative avant d'appliquer une rotation
-    if (lookInput.sqrMagnitude > 0.01f) // Ignorer les petites entrées pour éviter le bruit
-    {
-        // Rotation horizontale (Yaw) pour le joueur
-        float horizontal = lookInput.x * cameraSensitivity * Time.deltaTime;
-        transform.Rotate(Vector3.up, horizontal);
-
-        // Rotation verticale (Pitch) pour la caméra
-        float vertical = lookInput.y * cameraSensitivity * Time.deltaTime;
-        verticalAngle = Mathf.Clamp(verticalAngle - vertical, minVerticalAngle, maxVerticalAngle);
-
-        // Appliquer la rotation verticale à la caméra
-        Quaternion cameraRotation = Quaternion.Euler(verticalAngle, transform.eulerAngles.y, 0);
-        cameraTransform.rotation = cameraRotation;
-    }
-
-    // Ajuster le champ de vision pour le mode visée
-    float targetFOV = isAiming ? aimFOV : normalFOV;
-    Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, Time.deltaTime * aimSmoothSpeed);
-
-    // Ajuster la position de la caméra (avec interpolation pour un mouvement fluide)
-    Vector3 targetPosition = isAiming ? transform.position + aimOffset : transform.position + cameraOffset;
-    cameraTransform.position = Vector3.Slerp(cameraTransform.position, targetPosition, Time.deltaTime * aimSmoothSpeed);
-    }
-
-    void HandleAnimations()
-    {
-        if (animator != null)
-        {
-            Vector2 normalizedInput = movementInput.magnitude > 0.1f ? movementInput.normalized : Vector2.zero;
-            animator.SetFloat("PosX", normalizedInput.x);
-            animator.SetFloat("PosY", normalizedInput.y);
-
-            if (IsGrounded())
-            {
-                animator.SetBool("isJumping", false);
-                animator.SetBool("isFalling", false);
-                if (animator.GetBool("isLanding"))
-                {
-                    animator.SetBool("isLanding", false);
-                }
-            }
-            else
-            {
-                animator.SetBool("isJumping", velocity.y > 0);
-                animator.SetBool("isFalling", velocity.y < 0);
-
-                if (velocity.y <= 0 && !IsGrounded())
-                {
-                    animator.SetBool("isLanding", true);
-                }
-            }
-
-            animator.SetBool("isRunning", isRunning);
-            animator.SetBool("isSprinting", isSprinting);
-            animator.SetBool("isCrouching", isCrouching);
-            animator.SetBool("isRolling", isRolling);
-        }
+        // Autres paramètres booléens
+        animator.SetBool("isRunning", isRunning);
+        animator.SetBool("isSprinting", isSprinting);
+        animator.SetBool("isCrouching", isCrouching);
+        animator.SetBool("isRolling", isRolling);
     }
 
     void InteractWithBoostItem()
@@ -484,22 +373,28 @@ public void OnMouseScroll(InputAction.CallbackContext context)
             uiManager?.ToggleInteractionPrompt(false);
         }
     }
+
+    // velocity doit être défini quelque part (manquant dans votre code original),
+    // on le déclare ici en privé pour la gestion de la gravité
+    private Vector3 velocity;
 }
 
+// -------------------------------------------------------------------------
+// Classe séparée pour gérer l'état (course, sprint, etc.)
 public class StateManager
 {
     private bool isRunning;
     private bool isSprinting;
     private bool isAiming;
 
-    public void SetRunning(bool value) => isRunning = value;
+    public void SetRunning(bool value)   => isRunning = value;
     public void SetSprinting(bool value) => isSprinting = value;
-    public void SetAiming(bool value) => isAiming = value;
+    public void SetAiming(bool value)    => isAiming = value;
 
     public float GetCurrentSpeed(float walkSpeed, float runSpeed, float sprintSpeed)
     {
         if (isSprinting) return sprintSpeed;
-        if (isRunning) return runSpeed;
+        if (isRunning)   return runSpeed;
         return walkSpeed;
     }
 
