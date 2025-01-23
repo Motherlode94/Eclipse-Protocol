@@ -29,12 +29,13 @@ public class ThirdPersonCamera : MonoBehaviour
     private void LateUpdate()
     {
         // Positionnement de la caméra
-        Vector3 desiredPosition = target.position + offset * currentZoom;
-        transform.position = desiredPosition;
+        Vector3 desiredPosition = target.position - transform.forward * currentZoom + Vector3.up * offset.y;
+        transform.position = Vector3.Lerp(transform.position, desiredPosition, Time.deltaTime * rotationSpeed);
 
-        // Rotation de la caméra autour du joueur
-        transform.LookAt(target.position);
+        // Faire regarder la caméra vers le joueur
+        transform.LookAt(target.position + Vector3.up * offset.y);
+
+        // Rotation horizontale autour du joueur
         transform.RotateAround(target.position, Vector3.up, yawInput);
     }
 }
-

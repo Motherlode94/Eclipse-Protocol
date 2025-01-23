@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -23,11 +25,24 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     public Vector3 aimOffset = new Vector3(0, 1.5f, -2f);
     public float minVerticalAngle = -60f;
     public float maxVerticalAngle = 60f;
+    public Vector3 offset = new Vector3(0, 1.5f, -3f);
+    public float rotationSpeed = 5f;
+    public float zoomSpeed = 2f;
+    public float minZoom = 2f;
+    public float maxZoom = 10f;
+
+    [Header("Target Settings")]
+    public Transform target;
 
     [Header("VFX Settings")]
-    public ParticleSystem sprintVFX; // Reference to the sprint effect
+    public ParticleSystem sprintVFX;
     public ParticleSystem jumpVFX;
 
+    [Header("Inventory Settings")]
+    public GameObject inventoryPanel;
+
+    private float currentZoom = 5f;
+    private float yawInput = 0f;
     private CharacterController characterController;
     private StateManager stateManager;
     private Animator animator;
@@ -38,28 +53,80 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private Vector3 cameraOffset;
     private float verticalAngle = 0f;
     private bool isRunning, isSprinting, isCrouching, jumpInput;
-
-    // Fixed missing variables
     private bool isRolling = false;
     private bool isAiming = false;
     private InventoryManager inventoryManager;
-
-    private int currentJumpCount = 0;
     private PlayerStats playerStats;
     private BoostItem nearbyBoostItem;
     private UIManager uiManager;
-    public GameObject inventoryPanel;
+    private InputAction mouseXAction;
+    private InputAction mouseYAction;
+    private InputAction mouseScrollAction;
+
+    private PlayerInput playerInput; // Définition manquante ajoutée
+    private int currentJumpCount = 0; // Définition manquante ajoutée
 
     private void Awake()
     {
+                // Initialize state manager
+        stateManager = new StateManager();
+
+        // Get required components
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         playerStats = GetComponent<PlayerStats>();
+        playerInput = GetComponent<PlayerInput>();
         inventoryManager = FindObjectOfType<InventoryManager>();
         uiManager = FindObjectOfType<UIManager>();
 
+        // Validate components
+        if (characterController == null)
+            Debug.LogError("CharacterController component is missing!");
+        if (playerStats == null)
+            Debug.LogError("PlayerStats component is missing!");
+        if (playerInput == null)
+            Debug.LogError("PlayerInput component is missing!");
+
+        // Initialize controls
         controls = new EclipseProtocol();
-        stateManager = new StateManager();
+        InitializeInputActions();
+
+        // Camera setup
+        if (cameraTransform == null)
+        {
+            Debug.LogWarning("CameraTransform is not assigned. Using Camera.main.");
+            cameraTransform = Camera.main?.transform;
+            if (cameraTransform == null)
+                Debug.LogError("Main Camera is missing!");
+        }
+
+        // Target setup
+        if (target == null)
+        {
+            Debug.LogWarning("Target is not assigned. Using self transform.");
+            target = transform;
+        }
+
+        // Calculate camera offset
+        if (cameraTransform != null)
+            cameraOffset = cameraTransform.position - transform.position;
+    }
+
+    private void OnEnable()
+    {
+        controls?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        controls?.Disable();
+    }
+
+    private void InitializeInputActions()
+    {
+        mouseXAction = controls.Player.MouseX;
+        mouseYAction = controls.Player.MouseY;
+        mouseScrollAction = controls.Player.MouseScroll;
 
         controls.Player.Look.performed += ctx => OnLook(ctx);
         controls.Player.Move.performed += ctx => OnMove(ctx);
@@ -75,21 +142,73 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         controls.Player.Inventory.performed += OnInventory;
         controls.Player.Aim.performed += ctx => OnAim(ctx);
         controls.Player.Aim.canceled += ctx => OnAim(ctx);
-
-        cameraOffset = cameraTransform.position - transform.position;
     }
-
-    private void OnEnable() => controls.Enable();
-
-    private void OnDisable() => controls.Disable();
 
     private bool IsGrounded()
     {
-            Vector3 groundCheck = transform.position + Vector3.down * (characterController.height / 2 + groundYOffset);
-    bool grounded = Physics.CheckSphere(groundCheck, 0.2f, groundMask);
-    Debug.Log($"IsGrounded: {grounded}");
-    return grounded;
+        Vector3 groundCheck = transform.position + Vector3.down * (characterController.height / 2 + groundYOffset);
+        bool grounded = Physics.CheckSphere(groundCheck, 0.2f, groundMask);
+        return grounded;
     }
+
+
+    public void OnInteract(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnInteract
+    if (context.performed)
+    {
+        Debug.Log("Interact action triggered.");
+        // Ajouter ici la logique d'interaction
+    }
+}
+
+public void OnLookHorizontal(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnLookHorizontal
+    if (context.performed)
+    {
+        Debug.Log($"Horizontal Look: {context.ReadValue<float>()}");
+        // Ajouter ici la logique pour la rotation horizontale
+    }
+}
+
+public void OnZoom(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnZoom
+    if (context.performed)
+    {
+        Debug.Log($"Zoom: {context.ReadValue<float>()}");
+        // Ajouter ici la logique pour gérer le zoom
+    }
+}
+
+public void OnMouseX(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnMouseX
+    if (context.performed)
+    {
+        Debug.Log($"Mouse X Movement: {context.ReadValue<float>()}");
+    }
+}
+
+public void OnMouseY(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnMouseY
+    if (context.performed)
+    {
+        Debug.Log($"Mouse Y Movement: {context.ReadValue<float>()}");
+    }
+}
+
+public void OnMouseScroll(InputAction.CallbackContext context)
+{
+    // Implémentation de l'action OnMouseScroll
+    if (context.performed)
+    {
+        Debug.Log($"Mouse Scroll: {context.ReadValue<float>()}");
+    }
+}
+
 
     public void OnAim(InputAction.CallbackContext context)
     {
@@ -98,74 +217,33 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 
     public void OnMove(InputAction.CallbackContext context)
     {
-        if (context.performed)
-        {
-        movementInput = context.ReadValue<Vector2>();
-        }
-    else if (context.canceled)
-       {
-        // Reset input when movement is canceled
-        movementInput = Vector2.zero;
-       }
+        movementInput = context.performed ? context.ReadValue<Vector2>() : Vector2.zero;
     }
 
     public void OnLook(InputAction.CallbackContext context)
     {
-        lookInput = context.ReadValue<Vector2>();
-    }
+            Vector2 rawInput = context.ReadValue<Vector2>();
 
-    public void OnLookHorizontal(InputAction.CallbackContext context)
-{
-    if (context.performed)
-    {
-        float horizontalInput = context.ReadValue<float>();
-        lookInput.x = horizontalInput; // Appliquer à l'axe X de la caméra
+    // Appliquer un seuil pour éviter le bruit
+    const float threshold = 0.05f;
+    lookInput = rawInput.magnitude > threshold ? rawInput : Vector2.zero;
     }
-}
-
-    public void OnZoom(InputAction.CallbackContext context)
-    {
-        if (context.performed)
-        {
-            float zoomValue = context.ReadValue<float>();
-            // Ajoutez ici la logique de zoom (par exemple, ajuster la caméra)
-            Debug.Log($"Zoom input received: {zoomValue}");
-        }
-    }
-
 
     public void OnJump(InputAction.CallbackContext context)
     {
-            Debug.Log($"Jump Input Detected: {jumpInput}");
-
-    if (jumpVFX != null)
-    {
-        if (jumpInput)
-        {
-            jumpVFX.Play(); // Start the VFX
-        }
-        else
-        {
-            jumpVFX.Stop(); // Stop the VFX
-        }
-    }
+        jumpInput = context.performed;
     }
 
     public void OnSprint(InputAction.CallbackContext context)
     {
         isSprinting = context.performed;
-
         if (sprintVFX != null)
-    {
-        if (isSprinting)
         {
-            sprintVFX.Play(); // Start the VFX
+            if (isSprinting)
+                sprintVFX.Play();
+            else
+                sprintVFX.Stop();
         }
-        else
-        {
-            sprintVFX.Stop(); // Stop the VFX
-        }
-    }
     }
 
     public void OnRun(InputAction.CallbackContext context)
@@ -178,19 +256,19 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         if (context.performed)
         {
             isCrouching = !isCrouching;
-            animator.SetBool("isCrouching", isCrouching);
+            animator?.SetBool("isCrouching", isCrouching);
         }
     }
 
     public void OnRoll(InputAction.CallbackContext context)
     {
-        if (context.performed && characterController.isGrounded && !isCrouching)
+        if (context.performed && IsGrounded() && !isCrouching)
         {
             Vector3 rollDirection = new Vector3(movementInput.x, 0, movementInput.y);
             if (rollDirection.magnitude > 0.1f)
             {
                 isRolling = true;
-                animator.SetTrigger("isRolling");
+                animator?.SetTrigger("isRolling");
                 characterController.Move(rollDirection.normalized * rollSpeed * Time.deltaTime);
                 isRolling = false;
             }
@@ -200,9 +278,7 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     public void OnFire(InputAction.CallbackContext context)
     {
         if (context.performed)
-        {
             Debug.Log("Fire action triggered");
-        }
     }
 
     public void OnInventory(InputAction.CallbackContext context)
@@ -222,52 +298,53 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         }
     }
 
-    public void OnInteract(InputAction.CallbackContext context)
-    {
-        if (context.performed && nearbyBoostItem != null)
-        {
-            InteractWithBoostItem();
-        }
-    }
-
     private void Update()
     {
-        HandleMovement();
-        HandleGravityAndJump();
-        HandleCamera();
-        HandleStamina();
-        HandleAnimations();
+            HandleMovement();
+    HandleGravityAndJump();
+    HandleCamera();
+    HandleStamina();
+    HandleAnimations();
 
-        if (nearbyBoostItem != null && Keyboard.current.eKey.wasPressedThisFrame)
-        {
-            InteractWithBoostItem();
-        }
+    if (nearbyBoostItem != null && Keyboard.current.eKey.wasPressedThisFrame)
+    {
+        InteractWithBoostItem();
     }
 
-    /// <summary>
-/// Dynamically adjusts animator layers between Locomotion and Shooting.
-/// </summary>
-private void HandleLayerSwitching()
-{
-    if (animator != null)
+    // Rotation horizontale uniquement si la souris bouge significativement
+    float mouseX = mouseXAction.ReadValue<float>();
+    if (Mathf.Abs(mouseX) > 0.01f) // Seuil pour éviter les erreurs de mouvement minimal
     {
-        if (isAiming)
-        {
-            // Activate the Shooting layer
-            animator.SetLayerWeight(animator.GetLayerIndex("Shooting"), 1f);
-            animator.SetLayerWeight(animator.GetLayerIndex("Base Layer"), 0f);
-        }
-        else
-        {
-            // Revert to the Base Layer
-            animator.SetLayerWeight(animator.GetLayerIndex("Shooting"), 0f);
-            animator.SetLayerWeight(animator.GetLayerIndex("Base Layer"), 1f);
-        }
+        yawInput += mouseX * rotationSpeed * Time.deltaTime;
     }
-}
 
-    private void HandleStamina()
+    // Gestion du zoom
+    float scrollInput = mouseScrollAction.ReadValue<float>();
+    currentZoom = Mathf.Clamp(currentZoom - scrollInput * zoomSpeed, minZoom, maxZoom);
+    }
+    }
+
+    private void LateUpdate()
     {
+            // Mise à jour de la position de la caméra
+    Vector3 desiredPosition = target.position + offset * currentZoom;
+    cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, Time.deltaTime * aimSmoothSpeed);
+
+    // Appliquer la rotation horizontale au joueur
+    transform.rotation = Quaternion.Euler(0f, yawInput, 0f);
+
+    // Rotation verticale de la caméra
+    cameraTransform.LookAt(target.position + Vector3.up * 1.5f); // Ajustez la hauteur si nécessaire
+    }
+
+    void HandleStamina()
+    {
+        if (stateManager == null || playerStats == null)
+        {
+            Debug.LogError("StateManager or PlayerStats is not initialized!");
+            return;
+        }
+
         stateManager.UpdateStamina(playerStats);
 
         if (playerStats.currentStamina <= 0)
@@ -276,147 +353,128 @@ private void HandleLayerSwitching()
         }
     }
 
-    private void HandleMovement()
+    void HandleMovement()
     {
-            if (movementInput.magnitude > 0.1f) // Only move if there's meaningful input
+            if (movementInput.magnitude > 0.1f)
     {
-        // Calculate movement direction relative to the camera
+        // Calculer la direction du mouvement par rapport à la caméra
         Vector3 moveDirection = cameraTransform.forward * movementInput.y + cameraTransform.right * movementInput.x;
-        moveDirection.y = 0f; // Ignore vertical movement to keep movement on a flat plane
+        moveDirection.y = 0f; // Ignorer le mouvement vertical
         moveDirection.Normalize();
 
-        // Rotate the player to face the movement direction
+        // Effectuer la rotation du joueur uniquement dans la direction du mouvement
         Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f); // Smooth rotation
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
 
-        // Calculate speed based on the player's state
+        // Appliquer la vitesse et déplacer le joueur
         float currentSpeed = stateManager.GetCurrentSpeed(walkSpeed, runSpeed, sprintSpeed);
-
-        // Apply movement
         characterController.Move(moveDirection * currentSpeed * Time.deltaTime);
     }
-    }
 
-    private void HandleGravityAndJump()
-{
-    if (IsGrounded())
+    void HandleGravityAndJump()
     {
-        velocity.y = -2f; // Empêche l'accumulation de gravité
-        currentJumpCount = 0; // Réinitialise le compteur de sauts
-
-        if (jumpInput)
+        if (IsGrounded())
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity); // Calcul de la force de saut
-            currentJumpCount++; // Incrémente le compteur de sauts
-            jumpInput = false; // Réinitialise l'entrée de saut
+            velocity.y = -2f;
+            currentJumpCount = 0;
 
-            // Joue les VFX et l'animation
-            jumpVFX?.Play();
-            animator?.SetTrigger("Jump");
+            if (jumpInput)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                currentJumpCount++;
+                jumpInput = false;
+
+                jumpVFX?.Play();
+                animator?.SetTrigger("Jump");
+            }
+
+            animator?.SetBool("isFalling", false);
+            animator?.SetBool("isLanding", true);
+        }
+        else
+        {
+            if (jumpInput && currentJumpCount < 2)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                currentJumpCount++;
+                jumpInput = false;
+
+                jumpVFX?.Play();
+                animator?.SetTrigger("Jump");
+            }
+
+            velocity.y += gravity * Time.deltaTime;
+
+            animator?.SetBool("isFalling", velocity.y < 0);
+            animator?.SetBool("isLanding", false);
         }
 
-        // Réinitialise les paramètres d'animation au sol
-        animator?.SetBool("isFalling", false);
-        animator?.SetBool("isLanding", true);
-    }
-    else
-    {
-        // Permet un double saut
-        if (jumpInput && currentJumpCount < 2)
-        {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity); // Calcul de la force du double saut
-            currentJumpCount++; // Incrémente le compteur de sauts
-            jumpInput = false; // Réinitialise l'entrée de saut
-
-            // Joue les VFX et l'animation pour le double saut
-            jumpVFX?.Play();
-            animator?.SetTrigger("Jump");
-            Debug.Log("Double jump executed");
-        }
-
-        // Applique la gravité si le joueur est en l'air
-        velocity.y += gravity * Time.deltaTime;
-
-        // Gestion des états de saut et de chute
-        animator?.SetBool("isFalling", velocity.y < 0);
-        animator?.SetBool("isLanding", false);
+        characterController.Move(velocity * Time.deltaTime);
     }
 
-    // Applique le mouvement vertical
-    characterController.Move(velocity * Time.deltaTime);
-}
-
-    private void HandleCamera()
+    void HandleCamera()
     {
-            // Ensure lookInput values are valid before applying rotation
-    if (lookInput.sqrMagnitude > 0.01f) // Apply rotation only if there's significant input
+            // Vérification que l'entrée lookInput est significative avant d'appliquer une rotation
+    if (lookInput.sqrMagnitude > 0.01f) // Ignorer les petites entrées pour éviter le bruit
     {
-        // Horizontal rotation (Yaw)
+        // Rotation horizontale (Yaw) pour le joueur
         float horizontal = lookInput.x * cameraSensitivity * Time.deltaTime;
         transform.Rotate(Vector3.up, horizontal);
 
-        // Vertical rotation (Pitch)
+        // Rotation verticale (Pitch) pour la caméra
         float vertical = lookInput.y * cameraSensitivity * Time.deltaTime;
         verticalAngle = Mathf.Clamp(verticalAngle - vertical, minVerticalAngle, maxVerticalAngle);
 
-        // Apply vertical rotation to the camera
+        // Appliquer la rotation verticale à la caméra
         Quaternion cameraRotation = Quaternion.Euler(verticalAngle, transform.eulerAngles.y, 0);
         cameraTransform.rotation = cameraRotation;
     }
 
-    // Smoothly adjust FOV for aiming
+    // Ajuster le champ de vision pour le mode visée
     float targetFOV = isAiming ? aimFOV : normalFOV;
     Camera.main.fieldOfView = Mathf.Lerp(Camera.main.fieldOfView, targetFOV, Time.deltaTime * aimSmoothSpeed);
 
-    // Adjust camera position for aiming
+    // Ajuster la position de la caméra (avec interpolation pour un mouvement fluide)
     Vector3 targetPosition = isAiming ? transform.position + aimOffset : transform.position + cameraOffset;
     cameraTransform.position = Vector3.Slerp(cameraTransform.position, targetPosition, Time.deltaTime * aimSmoothSpeed);
     }
 
-    private void HandleAnimations()
+    void HandleAnimations()
     {
-    if (animator != null)
-    {
-        // Normaliser l'entrée pour éviter des valeurs inattendues
-        Vector2 normalizedInput = movementInput.magnitude > 0.1f ? movementInput.normalized : Vector2.zero;
-
-        // Mise à jour des paramètres du Blend Tree
-        animator.SetFloat("PosX", normalizedInput.x);
-        animator.SetFloat("PosY", normalizedInput.y);
-
-        // Gérer les états "Jumping", "Falling", et "Landing"
-        if (IsGrounded())
+        if (animator != null)
         {
-            animator.SetBool("isJumping", false);
-            animator.SetBool("isFalling", false);
+            Vector2 normalizedInput = movementInput.magnitude > 0.1f ? movementInput.normalized : Vector2.zero;
+            animator.SetFloat("PosX", normalizedInput.x);
+            animator.SetFloat("PosY", normalizedInput.y);
 
-            if (animator.GetBool("isLanding"))
+            if (IsGrounded())
             {
-                // Réinitialiser après l'atterrissage
-                animator.SetBool("isLanding", false);
+                animator.SetBool("isJumping", false);
+                animator.SetBool("isFalling", false);
+                if (animator.GetBool("isLanding"))
+                {
+                    animator.SetBool("isLanding", false);
+                }
             }
-        }
-        else
-        {
-            animator.SetBool("isJumping", velocity.y > 0);
-            animator.SetBool("isFalling", velocity.y < 0);
-
-            // Activer "Landing" uniquement si la chute est terminée
-            if (velocity.y <= 0 && !IsGrounded())
+            else
             {
-                animator.SetBool("isLanding", true);
-            }
-        }
+                animator.SetBool("isJumping", velocity.y > 0);
+                animator.SetBool("isFalling", velocity.y < 0);
 
-        // Mise à jour des autres états d'animation
-        animator.SetBool("isRunning", isRunning);
-        animator.SetBool("isSprinting", isSprinting);
-        animator.SetBool("isCrouching", isCrouching);
-        animator.SetBool("isRolling", isRolling);
-    }
+                if (velocity.y <= 0 && !IsGrounded())
+                {
+                    animator.SetBool("isLanding", true);
+                }
+            }
+
+            animator.SetBool("isRunning", isRunning);
+            animator.SetBool("isSprinting", isSprinting);
+            animator.SetBool("isCrouching", isCrouching);
+            animator.SetBool("isRolling", isRolling);
+        }
     }
 
-    private void InteractWithBoostItem()
+    void InteractWithBoostItem()
     {
         if (nearbyBoostItem != null)
         {
@@ -426,6 +484,7 @@ private void HandleLayerSwitching()
             uiManager?.ToggleInteractionPrompt(false);
         }
     }
+}
 
 public class StateManager
 {
@@ -434,9 +493,7 @@ public class StateManager
     private bool isAiming;
 
     public void SetRunning(bool value) => isRunning = value;
-
     public void SetSprinting(bool value) => isSprinting = value;
-
     public void SetAiming(bool value) => isAiming = value;
 
     public float GetCurrentSpeed(float walkSpeed, float runSpeed, float sprintSpeed)
@@ -459,5 +516,4 @@ public class StateManager
         isRunning = false;
         isSprinting = false;
     }
-}
 }
