@@ -10,20 +10,21 @@ public class DroneBehaviour : MonoBehaviour
     [Header("Player Interaction")]
     public float attackDamage = 10f;
     public float attackCooldown = 1f;
-    public float attackRange = 15f; // Distance maximale pour attaquer
+    public float attackRange = 15f;
 
     [Header("Effects")]
     public AudioClip reinforcementSound;
     public AudioClip fireSound;
     public ParticleSystem fireEffect;
 
+    [Header("Projectile Settings")]
+    public GameObject projectilePrefab;
+    public Transform firePoint;
+
     private float reinforcementTimer = 0f;
     private float attackTimer = 0f;
 
     private DroneAI droneAI;
-    public GameObject projectilePrefab;
-    public Transform firePoint;
-
     private AudioSource audioSource;
 
     private void Start()
@@ -33,7 +34,7 @@ public class DroneBehaviour : MonoBehaviour
 
         if (droneAI == null)
         {
-            Debug.LogError("DroneAI script is missing!");
+            Debug.LogError($"[DroneBehaviour] DroneAI script is missing on {gameObject.name}!");
         }
     }
 
@@ -62,16 +63,13 @@ public class DroneBehaviour : MonoBehaviour
         {
             Instantiate(reinforcementPrefab, spawnPoint.position, Quaternion.identity);
 
-            if (reinforcementSound != null && audioSource != null)
-            {
-                audioSource.PlayOneShot(reinforcementSound);
-            }
+            PlaySound(reinforcementSound);
 
-            Debug.Log("Reinforcements called!");
+            Debug.Log($"[DroneBehaviour] Reinforcements called by {gameObject.name}!");
         }
         else
         {
-            Debug.LogWarning("Reinforcement prefab or spawn point is not assigned!");
+            Debug.LogWarning($"[DroneBehaviour] ReinforcementPrefab or SpawnPoint is not assigned on {gameObject.name}.");
         }
     }
 
@@ -97,15 +95,14 @@ public class DroneBehaviour : MonoBehaviour
     {
         if (projectilePrefab != null && firePoint != null && droneAI.Player != null)
         {
+            // Calculate direction and rotation towards the player
             Vector3 directionToPlayer = (droneAI.Player.position - firePoint.position).normalized;
             Quaternion rotationToPlayer = Quaternion.LookRotation(directionToPlayer);
 
+            // Instantiate and configure projectile
             GameObject projectile = Instantiate(projectilePrefab, firePoint.position, rotationToPlayer);
 
-            if (fireSound != null && audioSource != null)
-            {
-                audioSource.PlayOneShot(fireSound);
-            }
+            PlaySound(fireSound);
 
             if (fireEffect != null)
             {
@@ -118,11 +115,19 @@ public class DroneBehaviour : MonoBehaviour
                 projectileScript.damage = attackDamage;
             }
 
-            Debug.Log("Projectile fired towards the player!");
+            Debug.Log($"[DroneBehaviour] {gameObject.name} fired a projectile at {droneAI.Player.name}!");
         }
         else
         {
-            Debug.LogWarning("Projectile prefab, fire point, or player is not assigned!");
+            Debug.LogWarning($"[DroneBehaviour] Missing components for firing on {gameObject.name}.");
+        }
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (clip != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(clip);
         }
     }
 }

@@ -375,8 +375,7 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     }
 
     // velocity doit être défini quelque part (manquant dans votre code original),
-    // on le déclare ici en privé pour la gestion de la gravité
-    private Vector3 velocity;
+    // on le déclare ici en privé pour la gestion de la gravit
 }
 
 // -------------------------------------------------------------------------

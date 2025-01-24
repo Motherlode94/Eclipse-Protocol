@@ -6,14 +6,11 @@ public class BuildingGenerator : MonoBehaviour
 {
     [Header("Building Elements")]
     public GameObject[] backgroundBuilding;
-    public GameObject[] ceiling_Trim;
+    public GameObject[] ceilingTrim;
     public GameObject[] floor;
     public GameObject[] railing;
-    public GameObject[] railing_Pillar;
-    public GameObject[] railing_Rail;
-    public GameObject[] railing_railStairs;
-    public GameObject[] railing_railStraight;
-
+    public GameObject[] railingPillar;
+    public GameObject[] railingRail;
     public GameObject[] blocks;
     public GameObject[] walls;
     public GameObject[] windows;
@@ -21,7 +18,7 @@ public class BuildingGenerator : MonoBehaviour
     public GameObject[] roofs;
     public GameObject[] balconies;
     public GameObject[] stairs;
-    public GameObject[] corners; // Coins pour les bords
+    public GameObject[] corners;
 
     [Header("Building Settings")]
     public int width = 5;
@@ -31,11 +28,11 @@ public class BuildingGenerator : MonoBehaviour
     public int balconyChance = 20;
 
     [Header("Biome Settings")]
-    public bool enableBiomes = false; // Active/désactive les biomes
-    public Color buildingColor = Color.white; // Couleur par défaut
+    public bool enableBiomes = false;
+    public Color buildingColor = Color.white;
 
     [Header("Debug Settings")]
-    public bool previewMode = false; // Mode prévisualisation
+    public bool previewMode = false;
 
     [Header("Parent Object")]
     public Transform buildingParent;
@@ -50,6 +47,12 @@ public class BuildingGenerator : MonoBehaviour
 
     public void GenerateBuilding()
     {
+        if (buildingParent == null)
+        {
+            Debug.LogError("Building Parent is not assigned! Please assign a Transform to 'buildingParent'.");
+            return;
+        }
+
         for (int y = 0; y < height; y++)
         {
             GenerateFloor(y);
@@ -70,12 +73,13 @@ public class BuildingGenerator : MonoBehaviour
             {
                 Vector3 position = new Vector3(x * blockSize, floorLevel * blockSize, z * blockSize);
                 bool isEdge = (x == 0 || x == width - 1 || z == 0 || z == width - 1);
+                bool isCorner = (x % (width - 1) == 0 && z % (width - 1) == 0);
 
                 if (isEdge)
                 {
-                    if (x == 0 && z == 0 || x == width - 1 && z == 0 || x == 0 && z == width - 1 || x == width - 1 && z == width - 1)
+                    if (isCorner)
                     {
-                        PlaceCorner(position); // Placer un coin
+                        PlaceCorner(position);
                     }
                     else if (floorLevel == 0 && Random.Range(0, 100) < doorChance)
                     {
@@ -96,8 +100,8 @@ public class BuildingGenerator : MonoBehaviour
                     PlaceBlock(position);
                 }
 
-                // Ajoute un sol sur chaque position
-                PlaceFloor(position, floorLevel);
+                // Add a floor at each position
+                PlaceFloor(position);
             }
         }
 
@@ -115,34 +119,22 @@ public class BuildingGenerator : MonoBehaviour
             {
                 Vector3 position = new Vector3(x * blockSize, height * blockSize, z * blockSize);
 
-                // Place un toit ou une garniture de plafond
-                if (roofs.Length > 0 && (x == 0 || z == 0 || x == width - 1 || z == width - 1))
+                if (x == 0 || z == 0 || x == width - 1 || z == width - 1)
                 {
-                    GameObject ceilingTrim = GetRandomElement(ceiling_Trim);
-                    if (ceilingTrim != null)
-                    {
-                        Instantiate(ceilingTrim, position, Quaternion.identity, buildingParent);
-                    }
+                    PlaceCeilingTrim(position);
                 }
 
-                if (roofs.Length > 0)
-                {
-                    GameObject roof = roofs[Random.Range(0, roofs.Length)];
-                    Instantiate(roof, position, Quaternion.identity, buildingParent);
-                }
+                PlaceRoof(position);
             }
         }
     }
 
-    private void PlaceFloor(Vector3 position, int floorLevel)
+    private void PlaceFloor(Vector3 position)
     {
-        if (floor.Length > 0)
+        GameObject floorElement = GetRandomElement(floor);
+        if (floorElement != null)
         {
-            GameObject floorElement = GetRandomElement(floor);
-            if (floorElement != null)
-            {
-                Instantiate(floorElement, position, Quaternion.identity, buildingParent);
-            }
+            Instantiate(floorElement, position, Quaternion.identity, buildingParent);
         }
     }
 
@@ -197,15 +189,32 @@ public class BuildingGenerator : MonoBehaviour
         if (stairs.Length > 0)
         {
             Vector3 position = new Vector3(width * blockSize / 2, floorLevel * blockSize, blockSize / 2);
-            GameObject stair = stairs[Random.Range(0, stairs.Length)];
+            GameObject stair = GetRandomElement(stairs);
             Instantiate(stair, position, Quaternion.identity, buildingParent);
+        }
+    }
+
+    private void PlaceCeilingTrim(Vector3 position)
+    {
+        GameObject ceilingTrimElement = GetRandomElement(ceilingTrim); // Fixed name conflict
+        if (ceilingTrimElement != null)
+        {
+            Instantiate(ceilingTrimElement, position, Quaternion.identity, buildingParent);
+        }
+    }
+
+    private void PlaceRoof(Vector3 position)
+    {
+        GameObject roof = GetRandomElement(roofs);
+        if (roof != null)
+        {
+            Instantiate(roof, position, Quaternion.identity, buildingParent);
         }
     }
 
     private GameObject GetRandomElement(GameObject[] array)
     {
-        if (array.Length == 0) return null;
-        return array[Random.Range(0, array.Length)];
+        return (array.Length > 0) ? array[Random.Range(0, array.Length)] : null;
     }
 
     private void ApplyBiomeSettings()
@@ -214,7 +223,7 @@ public class BuildingGenerator : MonoBehaviour
         foreach (Renderer renderer in renderers)
         {
             Material material = renderer.material;
-            material.color = buildingColor; // Applique la couleur du biome
+            material.color = buildingColor;
         }
     }
 }

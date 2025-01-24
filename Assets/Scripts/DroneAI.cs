@@ -8,6 +8,7 @@ public class DroneAI : MonoBehaviour
     public float attackRadius = 5f;
     public LayerMask playerLayer;
     public float fieldOfViewAngle = 120f;
+    public Transform Player => player;
 
     [Header("Patrol Settings")]
     public Transform[] patrolPoints;
@@ -30,15 +31,10 @@ public class DroneAI : MonoBehaviour
     private float alertTimer = 0f;
     public bool isChasing { get; private set; }
 
-    private float detectCooldown = 0.2f;
-    private float detectTimer = 0f;
     private float attackCooldown = 2f;
     private float lastAttackTime = 0f;
 
     private AudioSource audioSource;
-
-    // Propriété publique pour accéder au joueur
-    public Transform Player => player;
 
     private void Start()
     {
@@ -46,7 +42,14 @@ public class DroneAI : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
         agent.speed = patrolSpeed;
 
-        MoveToNextPatrolPoint();
+        if (patrolPoints.Length > 0)
+        {
+            MoveToNextPatrolPoint();
+        }
+        else
+        {
+            Debug.LogWarning("No patrol points assigned. Drone will stay idle.");
+        }
     }
 
     private void Update()
@@ -64,20 +67,8 @@ public class DroneAI : MonoBehaviour
             MoveToNextPatrolPoint();
         }
 
+        DetectPlayer();
         UpdateLookDirection();
-    }
-
-    private void FixedUpdate()
-    {
-        if (detectTimer > 0)
-        {
-            detectTimer -= Time.fixedDeltaTime;
-        }
-        else
-        {
-            DetectPlayer();
-            detectTimer = detectCooldown;
-        }
     }
 
     private void DetectPlayer()
@@ -92,12 +83,12 @@ public class DroneAI : MonoBehaviour
                 isChasing = true;
                 isAlerted = true;
 
-                if (alertEffect != null)
+                if (alertEffect != null && !alertEffect.isPlaying)
                 {
                     alertEffect.Play();
                 }
 
-                if (alertSound != null && audioSource != null)
+                if (alertSound != null && audioSource != null && !isAlerted)
                 {
                     audioSource.PlayOneShot(alertSound);
                 }
@@ -106,15 +97,13 @@ public class DroneAI : MonoBehaviour
             }
         }
 
+        // If no player detected and in alert state, reset after the timer
         if (isAlerted)
         {
             alertTimer += Time.deltaTime;
             if (alertTimer >= alertDuration)
             {
-                isAlerted = false;
-                alertTimer = 0f;
-                player = null;
-                isChasing = false;
+                ResetAlertState();
             }
         }
     }
@@ -138,14 +127,12 @@ public class DroneAI : MonoBehaviour
 
     private void ChasePlayer()
     {
-        if (player == null) return;
-
         agent.speed = chaseSpeed;
         agent.SetDestination(player.position);
 
         if (Vector3.Distance(transform.position, player.position) <= attackRadius)
         {
-            if (Time.time >= lastAttackTime + attackCooldown)
+            if (HasLineOfSight(player) && Time.time >= lastAttackTime + attackCooldown)
             {
                 lastAttackTime = Time.time;
                 AttackPlayer();
@@ -161,25 +148,21 @@ public class DroneAI : MonoBehaviour
         }
 
         Debug.Log("Drone is attacking the player!");
-        // Ajouter les effets ou les dégâts ici
+        // Add effects or damage logic here
     }
 
     private void MoveToNextPatrolPoint()
     {
         if (patrolPoints.Length == 0)
         {
-            Vector3 randomPoint = transform.position + Random.insideUnitSphere * detectionRadius;
-            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, detectionRadius, NavMesh.AllAreas))
-            {
-                agent.destination = hit.position;
-            }
+            agent.ResetPath();
+            Debug.LogWarning("No patrol points available. Drone is idle.");
+            return;
         }
-        else
-        {
-            agent.speed = patrolSpeed;
-            agent.destination = patrolPoints[currentPatrolIndex].position;
-            currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
-        }
+
+        agent.speed = patrolSpeed;
+        agent.destination = patrolPoints[currentPatrolIndex].position;
+        currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
     }
 
     private void HandleAlertState()
@@ -187,10 +170,17 @@ public class DroneAI : MonoBehaviour
         alertTimer += Time.deltaTime;
         if (alertTimer >= alertDuration)
         {
-            isAlerted = false;
-            alertTimer = 0f;
-            MoveToNextPatrolPoint();
+            ResetAlertState();
         }
+    }
+
+    private void ResetAlertState()
+    {
+        isAlerted = false;
+        alertTimer = 0f;
+        player = null;
+        isChasing = false;
+        MoveToNextPatrolPoint();
     }
 
     private void UpdateLookDirection()
@@ -209,11 +199,10 @@ public class DroneAI : MonoBehaviour
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
 
-        if (look != null)
+        if (look != null && player != null)
         {
             Gizmos.color = Color.blue;
-            Gizmos.DrawLine(transform.position, look.position);
-            Gizmos.DrawSphere(look.position, 0.2f);
+            Gizmos.DrawLine(transform.position, player.position);
         }
 
         Vector3 fovStart = Quaternion.Euler(0, -fieldOfViewAngle / 2f, 0) * transform.forward;
@@ -224,3 +213,4 @@ public class DroneAI : MonoBehaviour
         Gizmos.DrawRay(transform.position, fovEnd * detectionRadius);
     }
 }
+
