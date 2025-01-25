@@ -45,6 +45,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     private PlayerInput playerInput; // Défini dans votre description
     private int currentJumpCount = 0; // Idem
 
+    private bool previouslyInAir = false;
+
     // Pour déterminer si on est au sol
     private bool IsGrounded()
     {
@@ -267,48 +269,59 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     }
 
     void HandleGravityAndJump()
+{
+    // Check if the player is grounded
+    bool isGrounded = IsGrounded();
+
+    if (isGrounded)
     {
-        if (IsGrounded())
+        // Reset vertical velocity when grounded
+        velocity.y = -2f;
+        currentJumpCount = 0;
+
+        // Handle jump input
+        if (jumpInput)
         {
-            velocity.y = -2f; // Petite force vers le sol
-            currentJumpCount = 0;
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            currentJumpCount++;
+            jumpInput = false;
 
-            if (jumpInput)
-            {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-                currentJumpCount++;
-                jumpInput = false;
-
-                jumpVFX?.Play();
-                animator?.SetTrigger("Jump");
-            }
-
-            animator?.SetBool("isFalling", false);
-            animator?.SetBool("isLanding", true);
+            // Trigger jump animation
+            animator?.SetTrigger("Jump");
         }
-        else
-        {
-            // Double-saut possible
-            if (jumpInput && currentJumpCount < 2)
-            {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-                currentJumpCount++;
-                jumpInput = false;
-
-                jumpVFX?.Play();
-                animator?.SetTrigger("Jump");
-            }
-
-            // Accélération vers le bas
-            velocity.y += gravity * Time.deltaTime;
-
-            animator?.SetBool("isFalling", velocity.y < 0);
-            animator?.SetBool("isLanding", false);
-        }
-
-        // On applique la velocity verticale
-        characterController.Move(velocity * Time.deltaTime);
     }
+    else
+    {
+        // Apply gravity when in the air
+        velocity.y += gravity * Time.deltaTime;
+
+        // Handle double jump
+        if (jumpInput && currentJumpCount < 2)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            currentJumpCount++;
+            jumpInput = false;
+
+            animator?.SetTrigger("Jump");
+        }
+    }
+
+    // Update falling or jumping animation states
+    animator?.SetBool("isFalling", !isGrounded && velocity.y < 0);
+    animator?.SetBool("isJumping", !isGrounded && velocity.y > 0);
+
+    // Apply vertical movement
+    characterController.Move(new Vector3(0, velocity.y, 0) * Time.deltaTime);
+
+    // Detect landing
+    if (previouslyInAir && isGrounded)
+    {
+        animator?.SetTrigger("Landing");
+    }
+
+    previouslyInAir = !isGrounded;
+}
+
 
     void HandleStamina()
     {
@@ -328,39 +341,24 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 
     void HandleAnimations()
     {
-        if (animator == null) return;
+            if (!animator) return;
 
-        // Normaliser l'input si on veut X/Y dans [-1,1]
-        Vector2 normalizedInput = (movementInput.magnitude > 0.1f) ? movementInput.normalized : Vector2.zero;
-        animator.SetFloat("PosX", normalizedInput.x);
-        animator.SetFloat("PosY", normalizedInput.y);
+    // Alimentation de la blend tree de locomotion
+    Vector2 normalizedInput = (movementInput.magnitude > 0.1f) ? movementInput.normalized : Vector2.zero;
+    animator.SetFloat("PosX", normalizedInput.x);
+    animator.SetFloat("PosY", normalizedInput.y);
 
-        // Sol vs. Air
-        if (IsGrounded())
-        {
-            animator.SetBool("isJumping", false);
-            animator.SetBool("isFalling", false);
-            if (animator.GetBool("isLanding"))
-            {
-                animator.SetBool("isLanding", false);
-            }
-        }
-        else
-        {
-            animator.SetBool("isJumping", velocity.y > 0);
-            animator.SetBool("isFalling", velocity.y < 0);
+    // Gérer l’état "en l’air" si besoin
+    // (Si vous n’utilisez pas un paramètre "isJumping" en bool, vous pouvez le supprimer)
+    bool isGrounded = IsGrounded();
+    animator.SetBool("isJumping", !isGrounded && velocity.y > 0);
+    animator.SetBool("isFalling", !isGrounded && velocity.y < 0);
 
-            if (velocity.y <= 0)
-            {
-                animator.SetBool("isLanding", true);
-            }
-        }
-
-        // Autres paramètres booléens
-        animator.SetBool("isRunning", isRunning);
-        animator.SetBool("isSprinting", isSprinting);
-        animator.SetBool("isCrouching", isCrouching);
-        animator.SetBool("isRolling", isRolling);
+    // Courir, sprinter, etc.
+    animator.SetBool("isRunning", isRunning);
+    animator.SetBool("isSprinting", isSprinting);
+    animator.SetBool("isCrouching", isCrouching);
+    animator.SetBool("isRolling", isRolling);
     }
 
     void InteractWithBoostItem()
@@ -373,6 +371,18 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
             uiManager?.ToggleInteractionPrompt(false);
         }
     }
+    private void OnDrawGizmosSelected()
+{
+    if (!characterController) return;
+
+    // Calculate the ground check position
+    Vector3 groundCheck = transform.position + Vector3.down * (characterController.height / 2 + groundYOffset);
+
+    // Draw a wire sphere for visualization
+    Gizmos.color = IsGrounded() ? Color.green : Color.red;
+    Gizmos.DrawWireSphere(groundCheck, 0.2f);
+}
+
 
     // velocity doit être défini quelque part (manquant dans votre code original),
     // on le déclare ici en privé pour la gestion de la gravit
