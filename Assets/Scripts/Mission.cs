@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class Mission
+[CreateAssetMenu(fileName = "New Mission", menuName = "Quests/Mission")]
+public class Mission : ScriptableObject
 {
     public enum MissionState
     {
@@ -18,21 +18,26 @@ public class Mission
     public string missionDescription;
     public GameObject targetObject;
 
+    [Header("Timing")]
+    public float missionDuration; // En secondes
+    private float timeRemaining;
+
     [Header("Prerequisites")]
-    public List<Mission> prerequisites; // Missions nécessaires avant de commencer celle-ci
+    public List<Mission> prerequisites;
 
     [Header("Objectives")]
-    public List<string> objectives; // Liste des étapes/objectifs
+    public List<string> objectives;
     public int currentObjectiveIndex = 0;
 
     [Header("Rewards")]
     public int experienceReward;
     public int goldReward;
+    public List<InventoryItem> itemRewards;
 
     [Header("Mission Status")]
     public MissionState currentState = MissionState.NotStarted;
 
-    public bool isCompleted => currentState == MissionState.Completed;
+    public bool IsCompleted => currentState == MissionState.Completed;
 
     public event Action<Mission> OnMissionStarted;
     public event Action<Mission> OnMissionCompleted;
@@ -78,12 +83,22 @@ public class Mission
             targetObject.SetActive(true);
         }
 
+        timeRemaining = missionDuration > 0 ? missionDuration : 0;
         OnMissionStarted?.Invoke(this);
     }
 
-    /// <summary>
-    /// Avance l'objectif de la mission.
-    /// </summary>
+    public void Update(float deltaTime)
+    {
+        if (currentState == MissionState.InProgress && missionDuration > 0)
+        {
+            timeRemaining -= deltaTime;
+            if (timeRemaining <= 0)
+            {
+                FailMission();
+            }
+        }
+    }
+
     public void AdvanceObjective()
     {
         if (currentState != MissionState.InProgress || currentObjectiveIndex >= objectives.Count)
@@ -102,15 +117,25 @@ public class Mission
             Debug.Log($"Nouvel objectif : {GetCurrentObjective()}");
         }
     }
+    public Mission CreateDynamicMission()
+{
+    Mission newMission = ScriptableObject.CreateInstance<Mission>();
+
+    newMission.missionName = "Dynamic Mission";
+    newMission.missionDescription = "This is a dynamically generated mission.";
+    newMission.objectives = new List<string> { "Find the hidden key", "Open the treasure chest" };
+    newMission.experienceReward = 100;
+    newMission.goldReward = 50;
+
+    return newMission;
+}
+
 
     public string GetCurrentObjective()
     {
         return currentObjectiveIndex < objectives.Count ? objectives[currentObjectiveIndex] : "Aucun objectif actuel.";
     }
 
-    /// <summary>
-    /// Termine la mission.
-    /// </summary>
     public void CompleteMission()
     {
         if (currentState != MissionState.InProgress)
@@ -127,13 +152,10 @@ public class Mission
             targetObject.SetActive(false);
         }
 
-        OnMissionCompleted?.Invoke(this);
         GrantRewards();
+        OnMissionCompleted?.Invoke(this);
     }
 
-    /// <summary>
-    /// Échoue la mission.
-    /// </summary>
     public void FailMission()
     {
         if (currentState == MissionState.InProgress)
@@ -153,6 +175,11 @@ public class Mission
         {
             playerStats.GainXP(experienceReward);
             playerStats.AddMoney(goldReward);
+        }
+
+        foreach (var item in itemRewards)
+        {
+            InventoryManager.Instance.AddItem(item);
         }
     }
 }

@@ -6,6 +6,7 @@ public class MissionManager : MonoBehaviour
 {
     [Header("Missions")]
     public List<Mission> missions = new List<Mission>();
+    private List<Mission> activeMissions = new List<Mission>();
     private int currentMissionIndex = 0;
 
     [Header("Events")]
@@ -13,8 +14,16 @@ public class MissionManager : MonoBehaviour
     public UnityEvent<Mission> OnMissionCompleted;
     public UnityEvent<Mission> OnMissionFailed;
 
+    [Header("UI Elements")]
+    public TMPro.TextMeshProUGUI missionNameText;
+    public TMPro.TextMeshProUGUI missionDescriptionText;
+
     private void Start()
     {
+        Mission dynamicMission = CreateDynamicMission();
+missionManager.AddMission(dynamicMission);
+
+
         if (missions.Count > 0)
         {
             StartMission(currentMissionIndex);
@@ -27,40 +36,23 @@ public class MissionManager : MonoBehaviour
 
     public void StartMission(int index)
     {
-        if (index >= 0 && index < missions.Count)
+        if (index < 0 || index >= missions.Count)
         {
-            Mission mission = missions[index];
+            Debug.LogError("Index de mission invalide !");
+            return;
+        }
 
-            if (mission.isCompleted)
-            {
-                Debug.LogWarning($"Mission déjà complétée : {mission.missionName}");
-                return;
-            }
-
+        Mission mission = missions[index];
+        if (!activeMissions.Contains(mission) && mission.ArePrerequisitesMet())
+        {
+            activeMissions.Add(mission);
             mission.StartMission();
             OnMissionStarted?.Invoke(mission);
+            UpdateMissionUI(mission);
         }
         else
         {
-            Debug.LogWarning("Index de mission invalide !");
-        }
-    }
-
-    public void CompleteObjective()
-    {
-        if (currentMissionIndex >= 0 && currentMissionIndex < missions.Count)
-        {
-            Mission mission = missions[currentMissionIndex];
-
-            if (mission.currentState == Mission.MissionState.InProgress)
-            {
-                mission.AdvanceObjective();
-
-                if (mission.isCompleted)
-                {
-                    CompleteMission(currentMissionIndex);
-                }
-            }
+            Debug.LogWarning($"Impossible de démarrer la mission : {mission.missionName}");
         }
     }
 
@@ -69,32 +61,35 @@ public class MissionManager : MonoBehaviour
         if (index >= 0 && index < missions.Count)
         {
             Mission mission = missions[index];
-
-            if (!mission.isCompleted)
+            if (mission.IsCompleted)
             {
-                mission.CompleteMission();
+                activeMissions.Remove(mission);
                 OnMissionCompleted?.Invoke(mission);
-
                 currentMissionIndex++;
                 if (currentMissionIndex < missions.Count)
                 {
                     StartMission(currentMissionIndex);
                 }
-                else
-                {
-                    Debug.Log("Toutes les missions sont terminées !");
-                }
             }
+        }
+    }
+
+    public void UpdateMissionUI(Mission mission)
+    {
+        if (missionNameText != null && missionDescriptionText != null)
+        {
+            missionNameText.text = mission.missionName;
+            missionDescriptionText.text = mission.GetCurrentObjective();
         }
     }
 
     public void SaveMissions()
     {
-        Debug.Log("Sauvegarde des missions non implémentée.");
+        // Implémentez la logique de sauvegarde
     }
 
     public void LoadMissions()
     {
-        Debug.Log("Chargement des missions non implémenté.");
+        // Implémentez la logique de chargement
     }
 }

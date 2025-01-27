@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class InventoryManager : MonoBehaviour
 {
+    public static InventoryManager Instance { get; private set; }
     public List<InventorySlot> inventorySlots = new List<InventorySlot>();
     public int maxSlots = 20;
 
@@ -15,15 +16,24 @@ public class InventoryManager : MonoBehaviour
 
     private void Awake()
     {
-        if (inventorySlots == null)
+        // Implémentation du Singleton
+        if (Instance == null)
         {
-            inventorySlots = new List<InventorySlot>();
+            Instance = this;
+        }
+        else
+        {
+            Debug.LogWarning("Plusieurs instances de InventoryManager détectées ! Destruction de la copie.");
+            Destroy(gameObject);
+            return;
         }
 
-        // Remplir la liste avec des slots vides
+        DontDestroyOnLoad(gameObject); // Facultatif : garder l'instance entre les scènes
+
+        // Initialisation des slots
         for (int i = 0; i < maxSlots; i++)
         {
-            inventorySlots.Add(new InventorySlot(null, 0)); // Slot vide
+            inventorySlots.Add(new InventorySlot(null, 0)); // Slots vides
         }
     }
 
