@@ -1,7 +1,8 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class Rebel : MonoBehaviour
+public class Rebel : MonoBehaviour, IEnemy
 {
     [Header("Comportement")]
     public float attackRange = 2f; // Distance d'attaque
@@ -20,22 +21,23 @@ public class Rebel : MonoBehaviour
     private Transform target; // La cible actuelle
     private NavMeshAgent agent;
     private Animator animator;
+    public PlayerStats playerStats;
 
-    void Start()
+    private void Start()
     {
-        // Récupérer les composants nécessaires
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
 
-        if (agent == null) Debug.LogError("NavMeshAgent manquant sur " + gameObject.name);
-        if (animator == null) Debug.LogError("Animator manquant sur " + gameObject.name);
+        if (agent == null) Debug.LogError("NavMeshAgent manquant !");
+        if (animator == null) Debug.LogError("Animator manquant !");
     }
 
-    void Update()
+    private void Update()
     {
-        // Recherche d'une cible dans le rayon de détection
+        // Recherche d'une cible
         FindTarget();
 
+        // Comportement principal
         if (target != null)
         {
             ChaseAndAttackTarget();
@@ -44,15 +46,38 @@ public class Rebel : MonoBehaviour
         {
             Patrol();
         }
+
+        // Comportement basé sur la prime
+        if (playerStats.bounty >= playerStats.bountyThreshold2)
+        {
+            AttackPlayer();
+        }
+        else if (playerStats.bounty >= playerStats.bountyThreshold1)
+        {
+            BecomeAggressive();
+        }
     }
 
-    void FindTarget()
+    public void AttackPlayer()
+    {
+        Debug.Log("Le rebelle attaque le joueur !");
+        playerStats.TakeDamage(15); // Inflige 15 points de dégâts au joueur
+        animator.SetTrigger("Attack");
+    }
+
+    public void BecomeAggressive()
+    {
+        Debug.Log("Le rebelle devient agressif !");
+        // Recherche la cible la plus proche
+        FindTarget();
+    }
+
+    private void FindTarget()
     {
         Collider[] targetsInRange = Physics.OverlapSphere(transform.position, detectionRadius, targetLayer);
         if (targetsInRange.Length > 0)
         {
-            // Priorise la première cible détectée (peut être amélioré pour prioriser certains types)
-            target = targetsInRange[0].transform;
+            target = targetsInRange[0].transform; // Priorise la première cible
         }
         else
         {
@@ -60,7 +85,13 @@ public class Rebel : MonoBehaviour
         }
     }
 
-    void ChaseAndAttackTarget()
+    public float GetThreatLevel()
+    {
+        // Exemple : les rebelles sont toujours une menace constante
+        return 50f; // Valeur arbitraire
+    }
+
+    private void ChaseAndAttackTarget()
     {
         if (target == null) return;
 
@@ -73,30 +104,28 @@ public class Rebel : MonoBehaviour
             AttackTarget();
         }
 
-        // Gestion des animations
         animator.SetBool("isRunning", distanceToTarget > attackRange);
         animator.SetBool("isAttacking", distanceToTarget <= attackRange);
     }
 
-    void AttackTarget()
+    private void AttackTarget()
     {
-        // Animation ou logique d'attaque
         Debug.Log("Le rebelle attaque " + target.name);
         animator.SetTrigger("Attack");
 
-        // Ajouter des dégâts à la cible
-        PlayerStats playerStats = target.GetComponent<PlayerStats>();
-        if (playerStats != null)
+        // Appliquer des dégâts
+        PlayerStats targetStats = target.GetComponent<PlayerStats>();
+        if (targetStats != null)
         {
-            playerStats.TakeDamage(10); // Inflige 10 points de dégâts
+            targetStats.TakeDamage(10); // Inflige 10 points de dégâts
         }
         else
         {
-            Debug.LogWarning("La cible n'a pas de script PlayerStats !");
+            Debug.LogWarning("La cible n'a pas de PlayerStats !");
         }
     }
 
-    void Patrol()
+    private void Patrol()
     {
         if (patrolPoints.Length == 0)
         {
@@ -106,7 +135,6 @@ public class Rebel : MonoBehaviour
 
         if (!agent.pathPending && agent.remainingDistance < 0.5f)
         {
-            // Passer au prochain point de patrouille
             currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Length;
             agent.SetDestination(patrolPoints[currentPatrolIndex].position);
         }
@@ -115,20 +143,31 @@ public class Rebel : MonoBehaviour
         animator.SetBool("isWalking", true);
     }
 
-    void IdleBehavior()
+    private void IdleBehavior()
     {
         agent.ResetPath();
         animator.SetBool("isRunning", false);
         animator.SetBool("isWalking", false);
     }
 
-    void OnDrawGizmosSelected()
+    private void OnDrawGizmosSelected()
     {
-        // Visualisation des rayons de détection et d'attaque
+        // Rayon d'attaque
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
 
+        // Rayon de détection
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
+    }
+
+    public Transform GetTransform()
+    {
+        return transform;
+    }
+
+    public void TakeDamage(float damage)
+    {
+        Debug.Log(gameObject.name + " subit " + damage + " points de dégâts !");
     }
 }

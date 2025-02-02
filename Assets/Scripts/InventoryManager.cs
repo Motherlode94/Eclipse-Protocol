@@ -138,6 +138,7 @@ public bool AddItem(InventoryItem item)
         return false;
     }
 
+    // Vérifie si le poids total dépasse la limite
     float totalWeight = GetTotalWeight() + item.poids;
     if (totalWeight > maxSlots * 10) // Exemple : limite de poids par slot
     {
@@ -145,18 +146,19 @@ public bool AddItem(InventoryItem item)
         return false;
     }
 
-    // Recherche d'un slot existant avec l'item
+    // Recherche un slot existant avec cet item
     foreach (var slot in inventorySlots)
     {
         if (slot.item == item && slot.amount < item.maxStack)
         {
             slot.amount++;
             NotifyInventoryUpdated();
+            Debug.Log($"{item.itemName} ajouté dans un slot existant.");
             return true;
         }
     }
 
-    // Recherche d'un slot vide
+    // Recherche un slot vide
     foreach (var slot in inventorySlots)
     {
         if (slot.item == null)
@@ -164,18 +166,16 @@ public bool AddItem(InventoryItem item)
             slot.item = item;
             slot.amount = 1;
             NotifyInventoryUpdated();
+            Debug.Log($"{item.itemName} ajouté dans un nouveau slot.");
             return true;
         }
     }
 
-    // Si aucun slot disponible
+    // Si aucun slot n'est disponible
     Debug.LogWarning("L'inventaire est plein !");
     NotifyInventoryFull();
     return false;
 }
-
-
-
 public bool SplitStack(int slotIndex, int amountToSplit)
 {
     if (slotIndex < 0 || slotIndex >= inventorySlots.Count)
@@ -273,34 +273,41 @@ public List<InventorySlot> GetSlotsByCategory(string category)
 }
     public bool RemoveItem(InventoryItem item, int amount)
     {
-        foreach (var slot in inventorySlots)
+    if (item == null)
+    {
+        Debug.LogError("Tentative de retirer un item null !");
+        return false;
+    }
+
+    foreach (var slot in inventorySlots)
+    {
+        if (slot.item == item)
         {
-            if (slot.item == item)
+            if (slot.amount >= amount)
             {
-                if (slot.amount >= amount)
-                {
-                    slot.amount -= amount;
+                slot.amount -= amount;
 
-                    if (slot.amount <= 0)
-                    {
-                        slot.item = null;
-                        slot.amount = 0;
-                        OnItemRemoved?.Invoke(slot);
-                    }
-
-                    NotifyInventoryUpdated();
-                    return true;
-                }
-                else
+                if (slot.amount <= 0)
                 {
-                    Debug.LogWarning("Pas assez d'objets dans le slot pour retirer.");
-                    return false;
+                    Debug.Log($"{item.itemName} retiré complètement de l'inventaire.");
+                    slot.item = null;
+                    slot.amount = 0;
+                    OnItemRemoved?.Invoke(slot);
                 }
+
+                NotifyInventoryUpdated();
+                return true;
+            }
+            else
+            {
+                Debug.LogWarning($"Pas assez d'exemplaires de {item.itemName} pour retirer.");
+                return false;
             }
         }
+    }
 
-        Debug.LogWarning("L'objet n'est pas dans l'inventaire.");
-        return false;
+    Debug.LogWarning($"L'objet {item.itemName} n'est pas dans l'inventaire.");
+    return false;
     }
 
     public void UseItem(InventoryItem item)

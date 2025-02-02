@@ -1,63 +1,102 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponPickup : MonoBehaviour
 {
-    [Header("Paramètres de l'arme")]
+    [Header("Weapon Settings")]
     public GameObject weaponPrefab; // L'arme à ramasser
     public AudioClip pickupSound; // Son de ramassage
-    public ParticleSystem pickupEffect; // Effet visuel de ramassage (facultatif)
+    public ParticleSystem pickupEffect; // Effet visuel de ramassage
+    public string dialogueMessage = "Vous avez trouvé une arme ! Appuyez sur 'Interact' pour la ramasser."; // Message de dialogue
 
-    private Collider pickupCollider;
-
-    private void Start()
-    {
-        // Récupérer le collider pour le désactiver après ramassage
-        pickupCollider = GetComponent<Collider>();
-        if (pickupCollider == null)
-        {
-            Debug.LogError("Aucun Collider trouvé sur " + gameObject.name);
-        }
-    }
+    private bool playerInRange = false; // Indique si le joueur est dans la zone
+    private PlayerController playerController; // Référence au joueur
+    private bool hasDisplayedDialogue = false; // Empêche le dialogue de se répéter
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            WeaponSystem weaponSystem = other.GetComponent<WeaponSystem>();
-            if (weaponSystem != null)
+            playerInRange = true;
+
+            // Récupérer la référence au PlayerController
+            playerController = other.GetComponent<PlayerController>();
+
+            if (playerController != null)
             {
-                // Équipe l'arme au joueur
-                weaponSystem.EquipWeapon(weaponPrefab);
-
-                // Joue un son de ramassage
-                if (pickupSound != null)
-                {
-                    AudioSource.PlayClipAtPoint(pickupSound, transform.position);
-                }
-
-                // Joue un effet visuel de ramassage
-                if (pickupEffect != null)
-                {
-                    Instantiate(pickupEffect, transform.position, Quaternion.identity);
-                }
-
-                Debug.Log("Arme ramassée : " + weaponPrefab.name);
-
-                // Désactiver le collider pour éviter les collisions multiples
-                if (pickupCollider != null)
-                {
-                    pickupCollider.enabled = false;
-                }
-
-                // Détruire l'objet après ramassage
-                Destroy(gameObject);
+                // Abonnez-vous à l'événement d'interaction
+                playerController.OnInteractEvent += HandleInteraction;
             }
-            else
+
+            // Affiche un dialogue uniquement une fois
+            if (!hasDisplayedDialogue)
             {
-                Debug.LogWarning("Le joueur n'a pas de composant WeaponSystem !");
+                DialogueSystem dialogueSystem = FindObjectOfType<DialogueSystem>();
+                if (dialogueSystem != null)
+                {
+                    dialogueSystem.StartDialogue(new string[] { dialogueMessage });
+                }
+                hasDisplayedDialogue = true;
             }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            playerInRange = false;
+
+            // Retirer l'abonnement à l'événement
+            if (playerController != null)
+            {
+                playerController.OnInteractEvent -= HandleInteraction;
+                playerController = null;
+            }
+        }
+    }
+
+    private void HandleInteraction()
+    {
+        if (playerInRange)
+        {
+            PickupWeapon();
+        }
+    }
+
+    private void PickupWeapon()
+    {
+        WeaponSystem weaponSystem = FindObjectOfType<WeaponSystem>();
+        if (weaponSystem != null)
+        {
+            // Vérifie si l'arme est déjà dans l'inventaire
+            if (weaponSystem.weaponInventory.Contains(weaponPrefab))
+            {
+                Debug.Log("Cette arme est déjà dans l'inventaire.");
+                return;
+            }
+
+            // Ajouter et équiper l'arme
+            weaponSystem.weaponInventory.Add(weaponPrefab);
+            weaponSystem.EquipWeapon(weaponPrefab, "right");
+
+            // Effets visuels et sonores
+            if (pickupSound != null)
+            {
+                AudioSource.PlayClipAtPoint(pickupSound, transform.position);
+            }
+            if (pickupEffect != null)
+            {
+                Instantiate(pickupEffect, transform.position, Quaternion.identity);
+            }
+
+            Debug.Log("Arme ramassée : " + weaponPrefab.name);
+
+            // Désactiver et détruire l'objet
+            Destroy(gameObject, 0.5f);
+        }
+        else
+        {
+            Debug.LogWarning("Aucun système d'arme trouvé sur le joueur !");
         }
     }
 }

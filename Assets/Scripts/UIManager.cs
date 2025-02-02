@@ -1,6 +1,8 @@
 using UnityEngine;
 using TMPro;
-using System.Collections.Generic; // Nécessaire pour utiliser List<>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Events; // ✅ Ajout du namespace UnityEvent
 
 public class UIManager : MonoBehaviour
 {
@@ -29,6 +31,7 @@ public class UIManager : MonoBehaviour
 
     [Header("References")]
     private PlayerStats playerStats; // Référence au script PlayerStats
+    public MissionManager missionManager; // Référence au MissionManager
 
     [Header("Mission System")]
     public GameObject objectivesPanel; // Panneau des objectifs
@@ -37,45 +40,73 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI chapterTitleText; // Texte pour le titre du chapitre
     public TextMeshProUGUI locationText; // Texte pour la localisation actuelle
     public TextMeshProUGUI countdownTimerText; // Texte pour le compte à rebours
+    
+    [Header("Quest Log")]
+    public GameObject questLogPanel; // Panneau pour afficher les quêtes actives
+    public List<TextMeshProUGUI> questLogTexts; // Liste des textes des quêtes actives
 
     [Header("Audio Feedback")]
     public AudioSource uiAudioSource;
     public AudioClip levelUpSound;
     public AudioClip questCompleteSound;
 
+    [Header("Events")]
+    public UnityEvent onLevelUp;
+    public UnityEvent onMissionCompleted;
+    public UnityEvent onHealthCritical;
+
+    private void Awake()
+    {
+    ValidateReferences();
+
+    if (interactionPrompt != null)
+        interactionPrompt.SetActive(false);
+
+    if (alertText != null)
+        alertText.gameObject.SetActive(false);
+
+    if (levelUpPanel != null)
+        levelUpPanel.SetActive(false);
+
+    if (xpLog != null)
+        xpLog.SetActive(false);
+
+    if (questLogPanel != null)
+        questLogPanel.SetActive(false);
+    }
+
+
     private void Start()
     {
-                // Trouve automatiquement le script PlayerStats attaché à l'objet du joueur
         GameObject playerObject = GameObject.FindWithTag("Player");
         if (playerObject != null)
-        {
             playerStats = playerObject.GetComponent<PlayerStats>();
-        }
+
         else
-        {
             Debug.LogError("Aucun objet avec le tag 'Player' trouvé !");
-        }
-        if (damageTextPrefab != null)
+
+        if (missionManager == null)
         {
-            damageTextPrefab.SetActive(false);
-        }
-        if (objectivesPanel != null)
-        {
-            objectivesPanel.SetActive(false);
+            Debug.LogError("MissionManager n'est pas assigné dans le UIManager !");
         }
     }
 
-        private void Update()
+    private void ValidateReferences()
     {
-        // Met à jour les valeurs de la réputation et du niveau de criminalité
+        if (healthText == null) Debug.LogError("healthText non assigné !");
+        if (staminaText == null) Debug.LogError("staminaText non assigné !");
+        if (xpText == null) Debug.LogError("xpText non assigné !");
+        if (levelText == null) Debug.LogError("levelText non assigné !");
+        if (moneyText == null) Debug.LogError("moneyText non assigné !");
+        if (questLogPanel == null) Debug.LogWarning("Journal des quêtes non assigné !");
+    }
+
+    private void Update()
+    {
         if (playerStats != null)
         {
             reputationText.text = $"Réputation : {playerStats.Reputation}";
             crimeText.text = $"Niveau de criminalité : {playerStats.WantedLevel}";
-        }
-        else
-        {
-            Debug.LogWarning("PlayerStats n'est pas assigné au UIManager !");
         }
     }
 
@@ -105,50 +136,12 @@ public class UIManager : MonoBehaviour
         Destroy(damageTextInstance, 1.5f);
     }
 
-    private void Awake()
-    {
-        ValidateReferences();
-
-        if (interactionPrompt != null)
-        {
-            interactionPrompt.SetActive(false);
-        }
-
-        if (alertText != null)
-        {
-            alertText.gameObject.SetActive(false);
-        }
-
-        if (levelUpPanel != null)
-        {
-            levelUpPanel.SetActive(false);
-        }
-
-        if (xpLog != null)
-        {
-            xpLog.SetActive(false);
-        }
-    }
-
-    private void ValidateReferences()
-    {
-        if (healthText == null) Debug.LogError("healthText n'est pas assigné !");
-        if (staminaText == null) Debug.LogError("staminaText n'est pas assigné !");
-        if (xpText == null) Debug.LogError("xpText n'est pas assigné !");
-        if (levelText == null) Debug.LogError("levelText n'est pas assigné !");
-        if (moneyText == null) Debug.LogError("moneyText n'est pas assigné !");
-        if (objectiveTexts.Count == 0) Debug.LogWarning("Aucun texte d'objectif assigné !");
-        if (chapterTitleText == null) Debug.LogWarning("chapterTitleText n'est pas assigné !");
-        if (locationText == null) Debug.LogWarning("locationText n'est pas assigné !");
-        if (countdownTimerText == null) Debug.LogWarning("countdownTimerText n'est pas assigné !");
-        if (xpLog == null) Debug.LogWarning("xpLog n'est pas assigné !");
-        if (alertText == null) Debug.LogWarning("alertText n'est pas assigné !");
-    }
-
     public void UpdateHealth(int currentHealth)
     {
         healthText.text = $"HP : {currentHealth}";
         ApplyCriticalColor(healthText, currentHealth, 20);
+        if (currentHealth < 20)
+            onHealthCritical?.Invoke();
     }
 
     public void UpdateStamina(int currentStamina)
@@ -167,14 +160,11 @@ public class UIManager : MonoBehaviour
             xpGainedText.text = $"+{xpGained} XP";
             xpTotalText.text = $"XP : {currentXP}/{maxXP}";
 
-            CancelInvoke(nameof(HideXPLog));
-            Invoke(nameof(HideXPLog), 2f);
+            StartCoroutine(HideAfterDelay(xpLog, 2f));
         }
 
         if (currentXP >= maxXP)
-        {
             TriggerLevelUp(currentLevel + 1);
-        }
     }
 
     public void UpdateMoney(int currentMoney)
@@ -183,21 +173,94 @@ public class UIManager : MonoBehaviour
         FlashText(moneyText, Color.green, 0.5f);
     }
 
-        public void UpdateObjectives(List<string> objectives)
+    public void UpdateObjectives(List<string> objectives)
     {
         if (objectiveTexts.Count != objectives.Count)
         {
-            Debug.LogWarning("Le nombre d'objectifs assignés ne correspond pas au nombre d'éléments dans la liste.");
+            Debug.LogWarning("Nombre d'objectifs incorrect !");
             return;
         }
 
         for (int i = 0; i < objectives.Count; i++)
-        {
             objectiveTexts[i].text = objectives[i];
-        }
 
         objectivesPanel.SetActive(true);
     }
+
+    public void UpdateMission(string missionName, string missionDescription)
+    {
+        if (missionText != null)
+            missionText.text = $"Mission: {missionName}\n{missionDescription}";
+    }
+
+    public void ShowMissionComplete(string reward)
+    {
+        ShowAlert($"Mission accomplie ! Récompense : {reward}", 3f);
+        onMissionCompleted?.Invoke();
+        if (uiAudioSource != null && questCompleteSound != null)
+            uiAudioSource.PlayOneShot(questCompleteSound);
+    }
+
+    public void UpdateQuestLog()
+    {
+        if (missionManager == null || questLogTexts == null)
+        {
+            Debug.LogError("MissionManager ou questLogTexts n'est pas assigné !");
+            return;
+        }
+
+        List<string> activeQuests = missionManager.GetActiveQuests(); // Méthode dans MissionManager pour obtenir les quêtes actives
+
+        if (questLogTexts.Count < activeQuests.Count)
+        {
+            Debug.LogWarning("Pas assez d'emplacements pour afficher toutes les quêtes actives.");
+            return;
+        }
+
+        // Mettre à jour les textes pour les quêtes actives
+        for (int i = 0; i < activeQuests.Count; i++)
+        {
+            questLogTexts[i].text = activeQuests[i];
+            questLogTexts[i].gameObject.SetActive(true);
+        }
+
+        // Désactiver les textes inutilisés
+        for (int i = activeQuests.Count; i < questLogTexts.Count; i++)
+        {
+            questLogTexts[i].gameObject.SetActive(false);
+        }
+    }
+
+private IEnumerator AnimateQuestLog(bool open)
+{
+    Vector3 startScale = questLogPanel.transform.localScale;
+    Vector3 endScale = open ? Vector3.one : Vector3.zero;
+    float duration = 0.3f;
+    float elapsedTime = 0f;
+
+    while (elapsedTime < duration)
+    {
+        elapsedTime += Time.deltaTime;
+        questLogPanel.transform.localScale = Vector3.Lerp(startScale, endScale, elapsedTime / duration);
+        yield return null;
+    }
+
+    questLogPanel.transform.localScale = endScale;
+}
+
+
+
+    public void ToggleInteractionPrompt(bool isActive, string message = "Press E")
+    {
+        if (interactionPrompt != null)
+        {
+            interactionPrompt.SetActive(isActive);
+            TextMeshProUGUI promptText = interactionPrompt.GetComponentInChildren<TextMeshProUGUI>();
+            if (promptText != null)
+                promptText.text = message;
+        }
+    }
+
 
     public void UpdateChapterTitle(string title)
     {
@@ -244,51 +307,20 @@ public class UIManager : MonoBehaviour
 
         textElement.color = originalColor;
     }
-
-    public void ToggleInteractionPrompt(bool isActive, string message = "Press E")
-    {
-        if (interactionPrompt != null)
-        {
-            interactionPrompt.SetActive(isActive);
-            TextMeshProUGUI promptText = interactionPrompt.GetComponentInChildren<TextMeshProUGUI>();
-            if (promptText != null)
-            {
-                promptText.text = message;
-            }
-        }
-    }
-
     public void ShowAlert(string message, float duration = 2f)
     {
         if (alertText != null)
         {
             alertText.text = message;
             alertText.gameObject.SetActive(true);
-            StartCoroutine(HideAlertAfterDuration(duration));
+            StartCoroutine(HideAfterDelay(alertText.gameObject, duration));
         }
     }
 
-    private System.Collections.IEnumerator HideAlertAfterDuration(float duration)
+    private IEnumerator HideAfterDelay(GameObject uiElement, float duration)
     {
         yield return new WaitForSeconds(duration);
-        if (alertText != null) alertText.gameObject.SetActive(false);
-    }
-
-    public void UpdateMission(string missionName, string missionDescription)
-    {
-        if (missionText != null)
-        {
-            missionText.text = $"Mission: {missionName}\n{missionDescription}";
-        }
-    }
-
-    public void ShowMissionComplete(string reward)
-    {
-        ShowAlert($"Mission accomplie ! Récompense : {reward}", 3f);
-        if (uiAudioSource != null && questCompleteSound != null)
-        {
-            uiAudioSource.PlayOneShot(questCompleteSound);
-        }
+        uiElement.SetActive(false);
     }
 
     private void TriggerLevelUp(int newLevel)
@@ -297,19 +329,14 @@ public class UIManager : MonoBehaviour
         {
             levelUpPanel.SetActive(true);
             levelUpPanel.GetComponentInChildren<TextMeshProUGUI>().text = $"LEVEL UP! Level {newLevel}";
-
-            StartCoroutine(AnimateLevelUpPanel(levelUpPanel.transform, 0.5f));
-
+            StartCoroutine(HideAfterDelay(levelUpPanel, 3f));
+            onLevelUp?.Invoke();
             if (uiAudioSource != null && levelUpSound != null)
-            {
                 uiAudioSource.PlayOneShot(levelUpSound);
-            }
-
-            Invoke(nameof(HideLevelUpPanel), 3f);
         }
     }
 
-    private System.Collections.IEnumerator AnimateLevelUpPanel(Transform panelTransform, float duration)
+    private IEnumerator AnimateLevelUpPanel(Transform panelTransform, float duration)
     {
         Vector3 originalScale = panelTransform.localScale;
         Vector3 targetScale = originalScale * 1.2f;

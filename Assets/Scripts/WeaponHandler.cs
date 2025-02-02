@@ -9,7 +9,16 @@ public class WeaponHandler : MonoBehaviour
     public AudioClip fireSound; // Son joué lors du tir
     public float fireRate = 0.5f; // Temps minimum entre deux tirs
     public int maxAmmo = 30; // Nombre maximum de munitions
-    public int currentAmmo; // Munitions actuelles
+    private int _currentAmmo; // Stock interne des munitions
+
+    public int CurrentAmmo // Propriété pour encapsuler les munitions
+    {
+        get => _currentAmmo;
+        private set
+        {
+            _currentAmmo = Mathf.Clamp(value, 0, maxAmmo);
+        }
+    }
 
     private float nextFireTime = 0f; // Temps du prochain tir possible
     private Animator animator;
@@ -26,7 +35,7 @@ public class WeaponHandler : MonoBehaviour
         }
 
         // Initialisation des munitions
-        currentAmmo = maxAmmo;
+        CurrentAmmo = maxAmmo; // Utilise la propriété pour initialiser
     }
 
     public void Fire()
@@ -38,7 +47,7 @@ public class WeaponHandler : MonoBehaviour
             return;
         }
 
-        if (currentAmmo <= 0)
+        if (CurrentAmmo <= 0) // Utilise la propriété
         {
             Debug.Log("Pas de munitions !");
             return;
@@ -47,7 +56,7 @@ public class WeaponHandler : MonoBehaviour
         nextFireTime = Time.time + fireRate;
 
         // Décrémente les munitions
-        currentAmmo--;
+        CurrentAmmo--; // Utilise la propriété
 
         // Déclenche l'animation
         if (animator != null)
@@ -68,13 +77,13 @@ public class WeaponHandler : MonoBehaviour
             Destroy(flash, 0.5f); // Détruit le flash après un court instant
         }
 
-        Debug.Log("Tir effectué. Munitions restantes : " + currentAmmo);
+        Debug.Log("Tir effectué. Munitions restantes : " + CurrentAmmo); // Utilise la propriété
     }
 
     public void Reload()
     {
-        currentAmmo = maxAmmo;
-        Debug.Log("Arme rechargée. Munitions : " + currentAmmo);
+        CurrentAmmo = maxAmmo; // Utilise la propriété
+        Debug.Log("Arme rechargée. Munitions : " + CurrentAmmo); // Utilise la propriété
 
         // Ajout d'une animation de rechargement (facultatif)
         if (animator != null)

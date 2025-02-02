@@ -823,8 +823,10 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2947520612130895053}
   - {fileID: 8494817471372275886}
+  - {fileID: 2947520612130895053}
+  - {fileID: 7698430024447149609}
+  - {fileID: 2435817137803598850}
   m_Father: {fileID: 2271948501717527421}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1436,9 +1438,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2435817137803598850}
-  - {fileID: 7698430024447149609}
+  m_Children: []
   m_Father: {fileID: 2271948501717527421}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1644,17 +1644,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4609927388779221374}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 418744009924945143}
-  m_Father: {fileID: 7347941060884099569}
+  m_Father: {fileID: 4000873101312865172}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 242, y: -116.5}
+  m_AnchoredPosition: {x: 242, y: -336.74597}
   m_SizeDelta: {x: 115.7191, y: 70.4581}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5103605063348375558
@@ -3094,6 +3094,7 @@ MonoBehaviour:
   levelUpPanel: {fileID: 6436776457380026307}
   reputationText: {fileID: 4746971520692877678}
   crimeText: {fileID: 518017685101928551}
+  missionManager: {fileID: 0}
   objectivesPanel: {fileID: 3316912644521736762}
   missionText: {fileID: 5138796390890403799}
   objectiveTexts:
@@ -3103,9 +3104,20 @@ MonoBehaviour:
   chapterTitleText: {fileID: 189180043127934670}
   locationText: {fileID: 2615959564997480650}
   countdownTimerText: {fileID: 6524066923128367722}
+  questLogPanel: {fileID: 0}
+  questLogTexts: []
   uiAudioSource: {fileID: 0}
   levelUpSound: {fileID: 0}
   questCompleteSound: {fileID: 0}
+  onLevelUp:
+    m_PersistentCalls:
+      m_Calls: []
+  onMissionCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+  onHealthCritical:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &8306954472822166866
 GameObject:
   m_ObjectHideFlags: 0
@@ -3342,17 +3354,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9110014321246461240}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6447345480494428039}
-  m_Father: {fileID: 7347941060884099569}
+  m_Father: {fileID: 4000873101312865172}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -242, y: -116.5}
+  m_AnchoredPosition: {x: -242, y: -336.74597}
   m_SizeDelta: {x: 115.7191, y: 70.4581}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1207116466600993082

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cf86be5003f76b45b4bf82bb11a479e, type: 3}
+  m_Name: Keys
+  m_EditorClassIdentifier: 
+  itemName: Keys
+  icon: {fileID: 21300000, guid: fe95857ddc55f2c409abd3903444e85b, type: 3}
+  description: Open a door
+  isStackable: 1
+  maxStack: 0
+  poids: 0
+  category: Tools
+  prefab: {fileID: 8793208838059008368, guid: 81f23166dec60d34f81aad6e31e784c2, type: 3}
+  isEquippable: 1

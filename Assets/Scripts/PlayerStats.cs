@@ -15,9 +15,20 @@ public class PlayerStats : MonoBehaviour
     public int requiredXP = 100;
     public int currentLevel = 1;
 
-    public int currentMoney = 0;
+    public int Money
+{
+    get { return currentMoney; }
+    set { currentMoney = Mathf.Max(0, value); } // Empêche une valeur négative
+}
+public int currentMoney = 0;
 
     private UIManager uiManager;
+
+    [Header("Système de Prime")]
+public int bounty = 0; // Prime actuelle du joueur
+public int bountyThreshold1 = 50; // Seuil où les ennemis deviennent plus agressifs
+public int bountyThreshold2 = 100; // Seuil où tous les ennemis attaquent à vue
+
 
     [Header("Regeneration Settings")]
     public int healthRegenRate = 5; // Health regenerated per second
@@ -47,8 +58,15 @@ public class PlayerStats : MonoBehaviour
     public float BoostMultiplier = 2f;
     private List<float> healthBuffs = new List<float>();
     private List<float> staminaBuffs = new List<float>();
-        public int Reputation = 50; // Valeur initiale
+    public int Reputation = 50; // Valeur initiale
     public int WantedLevel = 0; // Niveau de criminalité initial
+
+
+    [Header("Fatigue Settings")]
+    public bool isFatigued = false; 
+public float fatigueSpeedMultiplier = 0.5f; // Vitesse réduite de 50%
+public float staminaFatigueThreshold = 5f; // Niveau de stamina où la fatigue commence
+
 
 
     private void Awake()
@@ -85,47 +103,44 @@ public class PlayerStats : MonoBehaviour
 
     private void HandleStamina()
     {
-        if (isSprinting && currentStamina > 0)
-        {
-            // Consomme de la stamina pour le sprint
-            currentStamina -= Mathf.RoundToInt(staminaSprintDrainRate * Time.deltaTime);
-        }
-        else if (isRunning && currentStamina > 0)
-        {
-            // Consomme de la stamina pour la course normale (run)
-            currentStamina -= Mathf.RoundToInt(staminaRunDrainRate * Time.deltaTime);
-        }
+    if (isSprinting && currentStamina > 0)
+    {
+        currentStamina -= Mathf.RoundToInt(staminaSprintDrainRate * Time.deltaTime);
+    }
+    else if (isRunning && currentStamina > 0)
+    {
+        currentStamina -= Mathf.RoundToInt(staminaRunDrainRate * Time.deltaTime);
+    }
 
-        if (currentStamina <= 0)
-        {
-            // Arrête le sprint ou la course normale si la stamina atteint 0
-            isSprinting = false;
-            isRunning = false;
-        }
+    if (currentStamina <= 0)
+    {
+        isSprinting = false;
+        isRunning = false;
+        isFatigued = true; // Active la fatigue
+        SpeedMultiplier = fatigueSpeedMultiplier;
+    }
 
-        // Empêche la régénération pendant le mouvement
-        if (isSprinting || isRunning)
-        {
-            regenTimer = 0f;
-        }
+    if (currentStamina > staminaFatigueThreshold)
+    {
+        isFatigued = false; // Le joueur récupère
+        SpeedMultiplier = 1.0f;
+    }
 
-        // Mise à jour de la stamina dans l'UI
-        currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
-        uiManager?.UpdateStamina(currentStamina);
+    regenTimer = isRunning || isSprinting ? 0f : regenTimer;
+    currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
+    uiManager?.UpdateStamina(currentStamina);
     }
 
     public void ModifyReputation(int amount)
     {
-            {
-        Reputation += amount;
-        Reputation = Mathf.Clamp(Reputation, 0, 100); // Garde la valeur entre 0 et 100
-            }
+    Reputation = Mathf.Clamp(Reputation + amount, 0, 100);
+    UpdateReputationEffects();
     }
 
     public void ModifyWantedLevel(int amount)
     {
-                WantedLevel += amount;
-        WantedLevel = Mathf.Max(0, WantedLevel); // Garde la valeur minimum à 0
+    WantedLevel = Mathf.Max(0, WantedLevel + amount);
+    UpdateWantedLevelEffects();
     }
 
     public void StartRun()
@@ -291,6 +306,85 @@ public class PlayerStats : MonoBehaviour
 
     StartCoroutine(HandleBuffTimer());
 }
+
+public void UpdateReputationEffects()
+{
+    if (Reputation >= 80)
+    {
+        Debug.Log("Le joueur est très respecté. Les civils aident plus souvent.");
+    }
+    else if (Reputation < 30)
+    {
+        Debug.Log("Le joueur est mal vu. Certains NPCs refusent d’interagir.");
+    }
+}
+
+public void UpdateWantedLevelEffects()
+{
+    if (WantedLevel >= 50)
+    {
+        Debug.Log("La police recherche activement le joueur !");
+    }
+    else if (WantedLevel >= 20)
+    {
+        Debug.Log("La police surveille le joueur de loin.");
+    }
+}
+
+public void ModifyBounty(int amount)
+{
+    bounty += amount;
+    bounty = Mathf.Max(0, bounty); // Empêche une valeur négative
+    UpdateBountyEffects();
+}
+
+private void UpdateBountyEffects()
+{
+    if (bounty >= bountyThreshold2)
+    {
+        Debug.Log("Tous les ennemis attaquent à vue !");
+    }
+    else if (bounty >= bountyThreshold1)
+    {
+        Debug.Log("Les ennemis sont plus agressifs.");
+    }
+    else
+    {
+        Debug.Log("La prime du joueur est basse, comportement normal.");
+    }
+}
+
+public void UpdateFactionReactions()
+{
+    // Police
+    if (WantedLevel >= 50)
+    {
+        Debug.Log("La police tire à vue !");
+    }
+    else if (WantedLevel >= 20)
+    {
+        Debug.Log("La police vous surveille.");
+    }
+
+    // Rebelles
+    if (Reputation <= 30)
+    {
+        Debug.Log("Les rebelles vous font confiance.");
+    }
+    else if (Reputation >= 70)
+    {
+        Debug.Log("Les rebelles vous considèrent comme un ennemi.");
+    }
+
+    // Mercenaires
+    if (bounty >= 100)
+    {
+        Debug.Log("Les mercenaires veulent vous capturer pour la prime !");
+    }
+}
+
+
+
 
 private IEnumerator HandleBuffTimer()
 {

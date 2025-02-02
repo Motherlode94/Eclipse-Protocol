@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
+
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
@@ -27,6 +29,11 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     [Header("Inventory Settings")]
     public GameObject inventoryPanel;
 
+    [Header("Quest Log")]
+    public GameObject questLogPanel; // Panneau principal du journal des quêtes
+    private bool isQuestLogOpen = false; // État du journal des quêtes
+    public List<TextMeshProUGUI> questLogTexts;
+
     private CharacterController characterController;
     private StateManager stateManager;
     private Animator animator;
@@ -47,6 +54,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
 
     private bool previouslyInAir = false;
 
+    public event System.Action OnInteractEvent;
+
     // Pour déterminer si on est au sol
     private bool IsGrounded()
     {
@@ -66,6 +75,7 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         animator = GetComponent<Animator>();
         playerStats = GetComponent<PlayerStats>();
         playerInput = GetComponent<PlayerInput>();
+        playerInput.SwitchCurrentActionMap("Player"); // Active l'Action Map "Player"
         inventoryManager = FindObjectOfType<InventoryManager>();
         uiManager = FindObjectOfType<UIManager>();
 
@@ -76,6 +86,8 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
             Debug.LogError("PlayerStats component is missing!");
         if (playerInput == null)
             Debug.LogError("PlayerInput component is missing!");
+        if (questLogPanel != null)
+           questLogPanel.SetActive(false);
 
         // Initialize controls
         controls = new EclipseProtocol();
@@ -105,6 +117,10 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         controls.Player.Sprint.performed += ctx => OnSprint(ctx);
         controls.Player.Sprint.canceled += ctx => OnSprint(ctx);
         controls.Player.Inventory.performed += OnInventory;
+        controls.Player.Journal.performed += OnJournal;
+        controls.Player.AttackPrimary.performed += OnAttackPrimary;
+        controls.Player.SwitchWeapon.performed += OnSwitchWeapon;
+
 
         // Pour la visée et le Look
         controls.Player.Aim.performed += ctx => OnAim(ctx);
@@ -123,6 +139,11 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         // Appliquer un seuil pour éviter le bruit
         const float threshold = 0.05f;
         lookInput = rawInput.magnitude > threshold ? rawInput : Vector2.zero;
+
+        if (context.performed)
+        {
+            lookInput = context.ReadValue<Vector2>();
+        }
     }
 
     public void OnInteract(InputAction.CallbackContext context)
@@ -135,8 +156,22 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
     }
     public void OnLookHorizontal(InputAction.CallbackContext context) { }
     public void OnZoom(InputAction.CallbackContext context) { }
-    public void OnMouseX(InputAction.CallbackContext context) { }
-    public void OnMouseY(InputAction.CallbackContext context) { }
+    public void OnMouseX(InputAction.CallbackContext context) {
+            if (context.performed)
+    {
+        float mouseX = context.ReadValue<float>();
+        Debug.Log("Mouse X: " + mouseX);
+        // Applique une rotation horizontale
+    }
+    }
+    public void OnMouseY(InputAction.CallbackContext context) {
+            if (context.performed)
+    {
+        float mouseY = context.ReadValue<float>();
+        Debug.Log("Mouse Y: " + mouseY);
+        // Applique une rotation verticale
+    }
+    }
     public void OnMouseScroll(InputAction.CallbackContext context) { }
     // --------------------------------------------------------------------- //
 
@@ -206,6 +241,37 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
         }
     }
 
+private void PerformPrimaryAttack(InputAction.CallbackContext context)
+{
+    Debug.Log("Effectuer une attaque primaire avec contexte !");
+    // Logique supplémentaire basée sur le contexte.
+}
+
+public void OnAttackPrimary(InputAction.CallbackContext context)
+{
+    if (context.performed) // Vérifie si l'action est déclenchée
+    {
+        Debug.Log("Attaque primaire déclenchée !");
+        PerformPrimaryAttack(context); // Appel avec le paramètre
+    }
+}
+
+
+public void OnSwitchWeapon(InputAction.CallbackContext context)
+{
+    if (context.performed) // Vérifie si l'action a été effectuée
+    {
+        PerformSwitchWeapon();
+    }
+}
+
+private void PerformSwitchWeapon()
+{
+    Debug.Log("Changement d'arme effectué !");
+    // Insérez ici la logique pour changer d'arme, par ex. :
+    // weaponSystem.SwitchToNextWeapon();
+}
+
     public void OnInventory(InputAction.CallbackContext context)
     {
         ToggleInventory();
@@ -222,6 +288,60 @@ public class PlayerController : MonoBehaviour, EclipseProtocol.IPlayerActions
             Debug.LogError("InventoryPanel is not assigned in the Inspector!");
         }
     }
+
+    public void OnJournal(InputAction.CallbackContext context)
+    {
+    if (context.performed)
+        {
+           ToggleQuestLog();
+        }
+    }
+
+private void ToggleQuestLog()
+{
+    if (questLogPanel == null)
+    {
+        Debug.LogError("Le panneau du journal des quêtes n'est pas assigné !");
+        return;
+    }
+
+    isQuestLogOpen = !isQuestLogOpen; // Inverse l'état
+    questLogPanel.SetActive(isQuestLogOpen); // Active ou désactive le panneau
+
+    // Gère les interactions en fonction de l'état
+    if (isQuestLogOpen)
+    {
+        // Désactive les contrôles de mouvement pour se concentrer sur l'UI
+        controls.Player.Disable();
+    }
+    else
+    {
+        // Réactive les contrôles après fermeture
+        controls.Player.Enable();
+    }
+}
+
+public void UpdateQuestLog(List<string> activeQuests)
+{
+    if (questLogTexts == null || questLogTexts.Count == 0)
+    {
+        Debug.LogError("Les textes pour le journal des quêtes ne sont pas assignés !");
+        return;
+    }
+
+    for (int i = 0; i < questLogTexts.Count; i++)
+    {
+        if (i < activeQuests.Count)
+        {
+            questLogTexts[i].text = activeQuests[i]; // Met à jour le texte
+            questLogTexts[i].gameObject.SetActive(true); // Active le texte
+        }
+        else
+        {
+            questLogTexts[i].gameObject.SetActive(false); // Cache les textes inutilisés
+        }
+    }
+}
 
     private void Update()
     {

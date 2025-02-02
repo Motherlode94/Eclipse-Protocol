@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -7,13 +5,9 @@ using UnityEngine;
 /// </summary>
 public interface IMeleeWeapon
 {
-    void Attack(); // Effectuer une attaque de mêlée
-}
-
-/// <summary>
-/// Interface pour les armes à distance.
-/// </summary>
-public interface IRangedWeapon
-{
-    void Fire(); // Effectuer un tir
+    float Damage { get; }       // Dégâts infligés par l'arme
+    float AttackSpeed { get; }  // Vitesse d'attaque (par exemple, coups par seconde)
+    void Attack();              // Méthode pour effectuer une attaque
+    void Equip();               // Méthode pour équiper l'arme
+    void Unequip();             // Méthode pour déséquiper l'arme
 }

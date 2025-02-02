@@ -3,7 +3,7 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [Header("Projectile Settings")]
-    public float speed = 10f; // Vitesse du projectile
+    public float speed = 20f; // Vitesse du projectile
     public float damage = 10f; // Dégâts infligés
     public float lifetime = 5f; // Durée de vie du projectile
 

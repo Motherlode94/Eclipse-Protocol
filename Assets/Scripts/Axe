@@ -1,0 +1,29 @@
+using UnityEngine;
+
+public class Axe : MonoBehaviour, IMeleeWeapon
+{
+    [Header("Caractéristiques de la hache")]
+    [SerializeField] private float damage = 70f;           // Dégâts infligés
+    [SerializeField] private float attackSpeed = 0.8f;     // Temps entre deux attaques
+
+    public float Damage => damage;
+    public float AttackSpeed => attackSpeed;
+
+    public void Equip()
+    {
+        Debug.Log("Hache équipée !");
+        // Ajoutez une animation ou un effet sonore si nécessaire
+    }
+
+    public void Unequip()
+    {
+        Debug.Log("Hache déséquipée !");
+        // Ajoutez une animation ou un effet sonore si nécessaire
+    }
+
+    public void Attack()
+    {
+        Debug.Log($"Coup de hache infligé avec {damage} dégâts.");
+        // Ajoutez ici une animation ou un effet visuel d'attaque
+    }
+}

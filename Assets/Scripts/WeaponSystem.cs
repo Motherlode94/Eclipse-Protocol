@@ -8,6 +8,7 @@ public class WeaponSystem : MonoBehaviour
     public GameObject equippedWeapon; // Arme actuellement équipée
     public Transform weaponHolderR, weaponHolderL, backHolder; // Supports pour les armes
     public List<GameObject> weaponInventory = new List<GameObject>(); // Inventaire des armes
+    private int currentWeaponIndex = 0; // Index de l'arme équipée
 
     [Header("Offsets")]
     public Vector3 weaponOffsetR, weaponRotationR;
@@ -62,31 +63,61 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    private void AddDefaultWeapons()
+{
+    var pistolPrefab = Resources.Load<GameObject>("Weapons/Pistol");
+    var riflePrefab = Resources.Load<GameObject>("Weapons/Rifle");
+    var shotgunPrefab = Resources.Load<GameObject>("Weapons/Shotgun");
+
+    if (pistolPrefab != null) weaponInventory.Add(Instantiate(pistolPrefab));
+    if (riflePrefab != null) weaponInventory.Add(Instantiate(riflePrefab));
+    if (shotgunPrefab != null) weaponInventory.Add(Instantiate(shotgunPrefab));
+
+    if (weaponInventory.Count > 0)
+    {
+        EquipWeapon(weaponInventory[0]);
+    }
+}
+    private void AddMeleeWeapons()
+{
+    var swordPrefab = Resources.Load<GameObject>("Weapons/Sword");
+    var axePrefab = Resources.Load<GameObject>("Weapons/Axe");
+
+    if (swordPrefab != null) weaponInventory.Add(Instantiate(swordPrefab));
+    if (axePrefab != null) weaponInventory.Add(Instantiate(axePrefab));
+
+    if (weaponInventory.Count > 0)
+    {
+        EquipWeapon(weaponInventory[0]);
+    }
+}
+
+    
+
+
     public void EquipWeapon(GameObject newWeapon, string holderType = "right")
     {
-        Transform selectedHolder = GetWeaponHolder(holderType);
+            Transform selectedHolder = GetWeaponHolder(holderType);
 
-        if (selectedHolder == null)
-        {
-            Debug.LogError($"Type de support invalide : {holderType}");
-            return;
-        }
+    if (selectedHolder == null)
+    {
+        Debug.LogError($"Type de support invalide : {holderType}");
+        return;
+    }
 
-        // Supprime l'arme déjà équipée dans ce support
-        if (selectedHolder.childCount > 0)
-        {
-            Destroy(selectedHolder.GetChild(0).gameObject);
-        }
+    // Supprime l'arme actuelle du support
+    if (selectedHolder.childCount > 0)
+    {
+        Destroy(selectedHolder.GetChild(0).gameObject);
+    }
 
-        equippedWeapon = Instantiate(newWeapon, selectedHolder);
-        ConfigureWeaponPosition(selectedHolder, holderType);
+    // Équipe la nouvelle arme
+    GameObject weaponInstance = Instantiate(newWeapon, selectedHolder);
+    weaponInstance.transform.localPosition = Vector3.zero;
+    weaponInstance.transform.localRotation = Quaternion.identity;
+    equippedWeapon = weaponInstance;
 
-        if (!weaponInventory.Contains(newWeapon))
-        {
-            weaponInventory.Add(newWeapon); // Ajoute à l'inventaire si ce n'est pas déjà fait
-        }
-
-        Debug.Log($"Arme équipée dans {holderType} : {newWeapon.name}");
+    Debug.Log($"Nouvelle arme équipée sur le support {holderType} : {newWeapon.name}");
     }
 
     private void UseWeapon()
@@ -123,6 +154,30 @@ public class WeaponSystem : MonoBehaviour
             "back" => backHolder,
             _ => null,
         };
+    }
+
+        public void SwitchToNextWeapon()
+    {
+        if (weaponInventory.Count == 0)
+        {
+            Debug.LogWarning("Aucune arme dans l'inventaire !");
+            return;
+        }
+
+        // Désactiver l'arme actuelle
+        if (equippedWeapon != null)
+        {
+            equippedWeapon.SetActive(false);
+        }
+
+        // Passer à l'arme suivante
+        currentWeaponIndex = (currentWeaponIndex + 1) % weaponInventory.Count;
+        equippedWeapon = weaponInventory[currentWeaponIndex];
+
+        // Activer la nouvelle arme
+        equippedWeapon.SetActive(true);
+
+        Debug.Log("Nouvelle arme équipée : " + equippedWeapon.name);
     }
 
     private void ConfigureWeaponPosition(Transform holder, string holderType)

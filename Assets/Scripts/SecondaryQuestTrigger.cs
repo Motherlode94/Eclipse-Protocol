@@ -6,6 +6,7 @@ public class SecondaryQuestTrigger : MonoBehaviour
 {
     [Header("Secondary Quest")]
     public Mission secondaryQuest;
+    public MissionManager missionManager; // Référence au MissionManager
 
     [Header("Trigger Settings")]
     public bool autoTrigger = false; // Si la quête doit être déclenchée automatiquement
@@ -16,17 +17,15 @@ public class SecondaryQuestTrigger : MonoBehaviour
     {
         if (other.CompareTag("Player") && !hasTriggered)
         {
-            if (secondaryQuest != null && secondaryQuest.currentState == Mission.MissionState.NotStarted)
+            if (secondaryQuest != null && secondaryQuest.ArePrerequisitesMet())
             {
-                TriggerQuest();
-                if (oneTimeTrigger)
-                {
-                    hasTriggered = true;
-                }
+                missionManager.AddMission(secondaryQuest); // Ajout de la mission secondaire au MissionManager
+                Debug.Log($"Quête secondaire déclenchée : {secondaryQuest.missionName}");
+                hasTriggered = true;
             }
             else
             {
-                Debug.LogWarning("Impossible de démarrer la quête secondaire (soit elle a déjà été démarrée, soit elle est terminée).");
+                Debug.LogWarning("Les prérequis pour cette quête secondaire ne sont pas remplis.");
             }
         }
     }
@@ -43,4 +42,12 @@ public class SecondaryQuestTrigger : MonoBehaviour
             Debug.LogWarning("Les prérequis pour cette quête secondaire ne sont pas remplis.");
         }
     }
+    public void NotifyMainQuestGiver(MainQuestGiver mainQuestGiver)
+{
+    if (mainQuestGiver != null)
+    {
+        mainQuestGiver.GiveNextQuest(); // Active la prochaine quête principale
+    }
+}
+
 }

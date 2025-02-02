@@ -14,16 +14,16 @@ TagManager:
   - 
   - Water
   - UI
-  - Player
-  - Enemy
-  - Ally
+  - playerLayer
+  - enemyLayer
+  - allyLayer
   - coverLayer
   - groundmask
-  - Interact
+  - 'interactionLayer '
   - obstacle
-  - Police
-  - Mercenery
-  - 
+  - rebelLayer
+  - merceneryLyaer
+  - policeLayer
   - 
   - 
   - 
